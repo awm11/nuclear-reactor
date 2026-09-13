@@ -1,5 +1,7 @@
 'use client';
 
+/* oxlint-disable jsx-a11y/prefer-tag-over-role */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
@@ -8,15 +10,19 @@ import {
   Gauge,
   Pause,
   Play,
+  RefreshCw,
   RotateCcw,
   ShieldAlert,
   Sparkles,
   Thermometer,
   Zap,
 } from 'lucide-react';
-import { ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
+import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
+const DEFAULT_NUCLEUS_INTERACTION_RADIUS = 0.3;
+const TEMPERATURE_WARNING = 350;
+const SCRAM_TEMPERATURE = 380;
 const EMPTY_TELEMETRY: Telemetry = {
   neutrons: 0,
   fissionsPerSecond: 0,
@@ -33,8 +39,12 @@ export default function Home() {
   const [scramming, setScramming] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [rodAbsorption, setRodAbsorption] = useState(70);
+  const [nucleusInteractionRadius, setNucleusInteractionRadius] = useState(DEFAULT_NUCLEUS_INTERACTION_RADIUS);
   const [pulseVersion, setPulseVersion] = useState(0);
   const [resetVersion, setResetVersion] = useState(0);
+  const [selectedFuelRod, setSelectedFuelRod] = useState<number | null>(null);
+  const [replacementFuelRod, setReplacementFuelRod] = useState<number | null>(null);
+  const [replacementVersion, setReplacementVersion] = useState(0);
   const [telemetry, setTelemetry] = useState<Telemetry>(EMPTY_TELEMETRY);
   const [history, setHistory] = useState<number[]>(Array(34).fill(0));
   const scramStartRef = useRef(DEFAULT_RODS);
@@ -49,7 +59,8 @@ export default function Home() {
   const power = telemetry.fissionsPerSecond * 105;
   const powerRef = useRef(power);
   const coreTemp = 286 + power * 0.052;
-  const overheating = coreTemp >= 335;
+  const temperatureWarning = coreTemp >= TEMPERATURE_WARNING;
+  const overheating = coreTemp >= SCRAM_TEMPERATURE;
   const state = getReactorState(kEffective, telemetry.neutrons, started);
 
   useEffect(() => {
@@ -74,6 +85,9 @@ export default function Home() {
     setStarted(false);
     setScramming(false);
     setRodAbsorption(70);
+    setNucleusInteractionRadius(DEFAULT_NUCLEUS_INTERACTION_RADIUS);
+    setSelectedFuelRod(null);
+    setReplacementFuelRod(null);
     setRods(DEFAULT_RODS);
     setTelemetry(EMPTY_TELEMETRY);
     setHistory(Array(34).fill(0));
@@ -102,30 +116,59 @@ export default function Home() {
     return () => cancelAnimationFrame(frame);
   }, [scramming]);
 
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement) return;
-      if (event.code === 'Space') {
-        event.preventDefault();
-        if (!started) startOrPulse();
-        else setRunning((value) => !value);
-      }
-      if (event.key.toLowerCase() === 'r') reset();
-      if (event.key.toLowerCase() === 's') scram();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [reset, scram, startOrPulse, started]);
-
   const changeRodBank = useCallback((value: number) => {
     setScramming(false);
     setRods((current) => current.map(() => value));
   }, []);
 
-  const setRodBank = (value: number) => {
-    setScramming(false);
-    setRods(rods.map(() => value));
-  };
+  const setRodBank = useCallback((value: number) => {
+    changeRodBank(value);
+  }, [changeRodBank]);
+
+  const replaceSelectedFuelRod = useCallback(() => {
+    if (selectedFuelRod === null) return;
+    setReplacementFuelRod(selectedFuelRod);
+    setReplacementVersion((version) => version + 1);
+  }, [selectedFuelRod]);
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLButtonElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (!started) startOrPulse();
+        else setRunning((value) => !value);
+        return;
+      }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        setScramming(false);
+        setRods((current) => {
+          const adjustment = event.key === 'ArrowUp' ? -2 : 2;
+          const nextValue = Math.max(0, Math.min(100, current[0] + adjustment));
+          return current.map(() => nextValue);
+        });
+        return;
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        setSelectedFuelRod((current) => {
+          if (current === null) return event.key === 'ArrowRight' ? 0 : FUEL_ASSEMBLY_COUNT - 1;
+          const adjustment = event.key === 'ArrowRight' ? 1 : -1;
+          return (current + adjustment + FUEL_ASSEMBLY_COUNT) % FUEL_ASSEMBLY_COUNT;
+        });
+        return;
+      }
+      if (event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        replaceSelectedFuelRod();
+      }
+      if (event.key.toLowerCase() === 's') scram();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [replaceSelectedFuelRod, scram, startOrPulse, started]);
 
   return (
     <main className="app-shell">
@@ -154,7 +197,7 @@ export default function Home() {
             </output>
           </div>
 
-          <div className={`core-stage ${overheating ? 'overheat' : ''}`}>
+          <div className={`core-stage ${temperatureWarning ? 'warning' : ''} ${overheating ? 'overheat' : ''}`}>
             <div className="chamber-label">
               <span>CORE 01 · {TOTAL_NUCLEI} NUCLEI</span>
               <span>{running ? 'LIVE PARTICLE VIEW' : 'PARTICLE VIEW PAUSED'}</span>
@@ -165,12 +208,17 @@ export default function Home() {
               running={running}
               speed={speed}
               rodAbsorption={rodAbsorption}
+              nucleusInteractionRadius={nucleusInteractionRadius}
+              selectedFuelAssembly={selectedFuelRod}
+              replacementFuelAssembly={replacementFuelRod}
+              replacementVersion={replacementVersion}
               pulseVersion={pulseVersion}
               resetVersion={resetVersion}
               onRodBankChange={changeRodBank}
+              onFuelAssemblySelect={setSelectedFuelRod}
               onTelemetry={setTelemetry}
             />
-            <div className="drag-hint">↕ Drag any cyan grip · rods move as one bank</div>
+            <div className="drag-hint">Double-click fuel · arrows: rods / fuel · R: replace</div>
             <div className="stage-legend">
               <span><i className="legend-neutron" /> Neutron</span>
               <span><i className="legend-nucleus" /> U-235 nucleus</span>
@@ -191,23 +239,17 @@ export default function Home() {
           <section className="panel control-panel">
             <div className="panel-heading compact">
               <div><p className="eyebrow">Operator controls</p><h2>Your levers</h2></div>
-              <span className="shortcut-help" title="Space: play/pause · R: reset · S: SCRAM"><CircleHelp size={16} /></span>
+              <span className="shortcut-help" title="Space: play/pause · ↑↓: rods · ←→: select fuel · R: replace · S: SCRAM"><CircleHelp size={16} /></span>
             </div>
-            <div className="rod-control">
-              <div className="control-label"><span>Rod bank average</span><strong>{Math.round(averageRod)}%</strong></div>
-              <input
-                aria-label="Move all control rods"
-                type="range"
-                min="0"
-                max="100"
-                value={averageRod}
-                onChange={(event) => setRodBank(Number(event.target.value))}
-              />
-              <div className="range-labels"><span>Withdrawn</span><span>Inserted</span></div>
-              <div className="rod-miniatures" aria-label="Coupled control rod insertion values">
-                {rods.map((rod, index) => <span key={index} style={{ '--rod-fill': `${rod}%` } as React.CSSProperties}>{Math.round(rod)}</span>)}
-              </div>
-            </div>
+            <RodThrottle value={averageRod} rods={rods} onChange={setRodBank}>
+              <button className={`scram-button ${temperatureWarning && !overheating ? 'warning' : ''} ${overheating ? 'alarm' : ''} ${scramming ? 'engaged' : ''}`} onClick={scram} aria-live="polite">
+                <span className="scram-cap"><ShieldAlert size={20} /></span>
+                <span className="scram-copy">
+                  <strong>SCRAM</strong>
+                  <small>{scramming ? 'Rods lowering now' : overheating ? 'Core overheat — press now' : temperatureWarning ? 'Temperature rising — stand by' : 'Emergency rod insertion'}</small>
+                </span>
+              </button>
+            </RodThrottle>
             <label className="absorption-control">
               <div className="control-label"><span>Control-rod collision</span><strong>{rodAbsorption}% capture</strong></div>
               <input
@@ -223,6 +265,30 @@ export default function Home() {
                 <span><i className="pass-swatch" /> Passes behind {100 - rodAbsorption}%</span>
               </div>
             </label>
+            <label className="absorption-control">
+              <div className="control-label"><span>Nucleus absorption radius</span><strong>{nucleusInteractionRadius.toFixed(2)} units</strong></div>
+              <input
+                aria-label="Nucleus absorption radius"
+                type="range"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={nucleusInteractionRadius}
+                onChange={(event) => setNucleusInteractionRadius(Number(event.target.value))}
+              />
+              <div className="range-labels"><span>Harder to hit</span><span>Larger cross-section</span></div>
+            </label>
+            {selectedFuelRod !== null && (
+              <div className="fuel-replacement-control">
+                <div>
+                  <span>Fuel rod {selectedFuelRod + 1} selected</span>
+                  <small>Double-click another rod to change selection</small>
+                </div>
+                <button onClick={replaceSelectedFuelRod}>
+                  <RefreshCw size={14} /> Replace fuel rod
+                </button>
+              </div>
+            )}
             <div className="control-buttons">
               <button className="primary-button" onClick={startOrPulse}>
                 <Sparkles size={16} /> {started ? 'Add neutron pulse' : 'Start chain reaction'}
@@ -232,9 +298,6 @@ export default function Home() {
               </button>
               <button className="icon-button" onClick={reset} aria-label="Reset simulation"><RotateCcw size={17} /></button>
             </div>
-            <button className={`scram-button ${overheating ? 'alarm' : ''} ${scramming ? 'engaged' : ''}`} onClick={scram} aria-live="polite">
-              <ShieldAlert size={15} /> {scramming ? 'SCRAM IN PROGRESS · LOWERING RODS' : overheating ? 'SCRAM NOW · CORE OVERHEAT' : 'SCRAM · insert all rods'}
-            </button>
             <label className="speed-control">
               <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
               <input type="range" min="0.4" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
@@ -247,7 +310,7 @@ export default function Home() {
               <Metric icon={<Zap size={16} />} label="Thermal power" value={power.toFixed(0)} unit="MW" accent="amber" />
               <Metric icon={<Activity size={16} />} label="Free neutrons" value={String(telemetry.neutrons)} unit="n" accent="cyan" />
               <Metric icon={<Gauge size={16} />} label="Energy made" value={telemetry.energyGJ.toFixed(2)} unit="GJ" accent="green" />
-              <ThermometerReadout temperature={coreTemp} overheating={overheating} />
+              <ThermometerReadout temperature={coreTemp} warning={temperatureWarning} overheating={overheating} />
             </div>
             <div className="fuel-readout">
               <div><span>U-235 nuclei remaining</span><strong>{telemetry.activeNuclei} / {TOTAL_NUCLEI}</strong></div>
@@ -270,9 +333,80 @@ export default function Home() {
 
       <footer>
         <span>Educational aggregate model · not for operational use</span>
-        <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · R: reset · S: SCRAM</span>
+        <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · ↑↓: rods · ←→: fuel · R: replace · S: SCRAM</span>
       </footer>
     </main>
+  );
+}
+
+function RodThrottle({ value, rods, onChange, children }: { value: number; rods: number[]; onChange: (value: number) => void; children: React.ReactNode }) {
+  const pointerState = useRef<{ startY: number; grabOffsetY: number; moved: boolean } | null>(null);
+
+  const pointerValue = (clientY: number, target: HTMLDivElement, offsetY = 0) => {
+    const bounds = target.getBoundingClientRect();
+    const handleY = clientY - offsetY;
+    const nextValue = (((handleY - bounds.top) / bounds.height - 0.12) / 0.76) * 100;
+    return Math.max(0, Math.min(100, nextValue));
+  };
+
+  return (
+    <div className="rod-throttle">
+      <div className="control-label"><span>Control rods</span><strong>{Math.round(value)}%</strong></div>
+      <div className="throttle-console">
+        <div className="throttle-scale" aria-hidden="true">
+          <span>OUT</span><i /><i /><i /><i /><i /><span>IN</span>
+        </div>
+        <div
+          className="throttle-travel"
+          role="slider"
+          tabIndex={0}
+          aria-label="Control rod bank insertion"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(value)}
+          aria-valuetext={`${Math.round(value)} percent inserted`}
+          onPointerDown={(event) => {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const handleY = bounds.top + bounds.height * (0.12 + value * 0.0076);
+            pointerState.current = {
+              startY: event.clientY,
+              grabOffsetY: event.clientY - handleY,
+              moved: false,
+            };
+            event.currentTarget.focus();
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            const state = pointerState.current;
+            if (!state) return;
+            if (!state.moved && Math.abs(event.clientY - state.startY) < 3) return;
+            state.moved = true;
+            onChange(pointerValue(event.clientY, event.currentTarget, state.grabOffsetY));
+          }}
+          onPointerUp={(event) => {
+            const state = pointerState.current;
+            if (state) {
+              onChange(pointerValue(event.clientY, event.currentTarget, state.moved ? state.grabOffsetY : 0));
+            }
+            pointerState.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onPointerCancel={() => { pointerState.current = null; }}
+        >
+          <span className="throttle-slot" aria-hidden="true" />
+          <span className="throttle-handle" style={{ top: `${12 + value * 0.76}%` }} aria-hidden="true">
+            <i className="throttle-stem" />
+            <b className="throttle-grip"><em /></b>
+            <i className="throttle-pivot" />
+          </span>
+        </div>
+        <span className="throttle-instruction">Drag handle</span>
+      </div>
+      {children}
+      <div className="rod-miniatures" aria-label="Control rod insertion values">
+        {rods.map((rod, index) => <span key={index} style={{ '--rod-fill': `${rod}%` } as React.CSSProperties}>{Math.round(rod)}</span>)}
+      </div>
+    </div>
   );
 }
 
@@ -287,19 +421,19 @@ function Metric({ icon, label, value, unit, accent }: { icon: React.ReactNode; l
   return <div className={`metric-card ${accent}`}><div className="metric-label">{icon}<span>{label}</span></div><div className="metric-value">{value}<small>{unit}</small></div></div>;
 }
 
-function ThermometerReadout({ temperature, overheating }: { temperature: number; overheating: boolean }) {
-  const fill = Math.max(8, Math.min(100, ((temperature - 280) / 75) * 100));
+function ThermometerReadout({ temperature, warning, overheating }: { temperature: number; warning: boolean; overheating: boolean }) {
+  const fill = Math.max(8, Math.min(100, ((temperature - 280) / 120) * 100));
   return (
-    <div className={`thermometer-card ${overheating ? 'hot' : ''}`}>
+    <div className={`thermometer-card ${warning ? 'warning' : ''} ${overheating ? 'hot' : ''}`}>
       <div className="thermometer-visual" aria-hidden="true">
         <span className="thermometer-tube"><i style={{ height: `${fill}%` }} /></span>
         <span className="thermometer-bulb" />
-        <span className="temperature-warning-line">335</span>
+        <span className="temperature-warning-line">380</span>
       </div>
       <div className="thermometer-copy">
         <span><Thermometer size={17} /> Core temperature</span>
         <strong>{temperature.toFixed(0)}<small>°C</small></strong>
-        <em>{overheating ? 'Overheating — SCRAM advised' : 'Normal operating range'}</em>
+        <em>{overheating ? 'Critical heat — SCRAM now' : warning ? 'Temperature warning — prepare to SCRAM' : 'Normal operating range'}</em>
       </div>
     </div>
   );

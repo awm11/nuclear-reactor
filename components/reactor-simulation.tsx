@@ -11,21 +11,20 @@ export type Telemetry = {
   spentNuclei: number;
 };
 
-export const TOTAL_NUCLEI = 2400;
+export const TOTAL_NUCLEI = 4800;
 
-const NUCLEUS_INTERACTION_RADIUS = 2.6;
-
-type Particle = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  trailX: number;
-  trailY: number;
-  age: number;
-  lifetime: number;
-  generation: number;
-  passedControlRods: Set<number>;
+type ParticleBuffer = {
+  count: number;
+  x: Float32Array;
+  y: Float32Array;
+  vx: Float32Array;
+  vy: Float32Array;
+  trailX: Float32Array;
+  trailY: Float32Array;
+  age: Float32Array;
+  lifetime: Float32Array;
+  generation: Uint16Array;
+  passedControlRods: Uint8Array;
 };
 
 type Flash = {
@@ -40,9 +39,14 @@ type Props = {
   running: boolean;
   speed: number;
   rodAbsorption: number;
+  nucleusInteractionRadius: number;
+  selectedFuelAssembly: number | null;
+  replacementFuelAssembly: number | null;
+  replacementVersion: number;
   pulseVersion: number;
   resetVersion: number;
   onRodBankChange: (value: number) => void;
+  onFuelAssemblySelect: (index: number | null) => void;
   onTelemetry: (telemetry: Telemetry) => void;
 };
 
@@ -50,17 +54,58 @@ const WIDTH = 1000;
 const HEIGHT = 860;
 const NUCLEUS_GRID_SIZE = 20;
 const NUCLEUS_GRID_COLUMNS = Math.ceil(WIDTH / NUCLEUS_GRID_SIZE);
+const NUCLEUS_GRID_ROWS = Math.ceil(HEIGHT / NUCLEUS_GRID_SIZE);
+const MAX_RENDERED_NEUTRONS = 8000;
+const NUCLEUS_U235 = 0;
+const NUCLEUS_DAUGHTER = 1;
 const CORE = { x: 70, y: 72, width: 860, height: 754 };
-const ROD_X = [195, 348, 500, 652, 805];
-const FUEL_ASSEMBLIES = Array.from({ length: 10 }, (_, index) => ({
-  x: CORE.x + 25 + index * 82,
-  y: CORE.y + 26,
-  width: 72,
-  height: 700,
-}));
+const CORE_LAYOUT = 'FCFFCFFCFFCFFCF';
+const CONTROL_ROD_CHANNEL_WIDTH = 32;
+const ADJACENT_FUEL_GAP = 10;
+const { rodPositions: ROD_X, fuelAssemblies: FUEL_ASSEMBLIES } = createCoreLayout();
+export const FUEL_ASSEMBLY_COUNT = FUEL_ASSEMBLIES.length;
+const NUCLEI_PER_FUEL_ASSEMBLY = TOTAL_NUCLEI / FUEL_ASSEMBLY_COUNT;
+const SPENT_FUEL_THRESHOLD = Math.ceil(NUCLEI_PER_FUEL_ASSEMBLY * 0.8);
+const PULSE_SOURCE = {
+  x: FUEL_ASSEMBLIES[3].x + FUEL_ASSEMBLIES[3].width * 0.5,
+  y: FUEL_ASSEMBLIES[3].y + FUEL_ASSEMBLIES[3].height * 0.43,
+};
 
 const NUCLEI = createNuclei(TOTAL_NUCLEI);
 const NUCLEUS_GRID = createNucleusGrid();
+
+function createCoreLayout() {
+  const contentX = CORE.x + 25;
+  const contentWidth = CORE.width - 50;
+  const layoutItems = CORE_LAYOUT.split('');
+  const fuelCount = layoutItems.filter((item) => item === 'F').length;
+  const controlRodCount = layoutItems.filter((item) => item === 'C').length;
+  const adjacentFuelGapCount = layoutItems.reduce(
+    (count, item, index) => count + (item === 'F' && layoutItems[index - 1] === 'F' ? 1 : 0),
+    0,
+  );
+  const fuelWidth = (
+    contentWidth -
+    controlRodCount * CONTROL_ROD_CHANNEL_WIDTH -
+    adjacentFuelGapCount * ADJACENT_FUEL_GAP
+  ) / fuelCount;
+  const rodPositions: number[] = [];
+  const fuelAssemblies: { x: number; y: number; width: number; height: number }[] = [];
+
+  let x = contentX;
+  for (let index = 0; index < layoutItems.length; index += 1) {
+    const item = layoutItems[index];
+    if (item === 'F') {
+      if (layoutItems[index - 1] === 'F') x += ADJACENT_FUEL_GAP;
+      fuelAssemblies.push({ x, y: CORE.y + 26, width: fuelWidth, height: 700 });
+      x += fuelWidth;
+    } else {
+      rodPositions.push(x + CONTROL_ROD_CHANNEL_WIDTH / 2);
+      x += CONTROL_ROD_CHANNEL_WIDTH;
+    }
+  }
+  return { rodPositions, fuelAssemblies };
+}
 
 function createNuclei(count: number) {
   let seed = 235;
@@ -73,7 +118,7 @@ function createNuclei(count: number) {
     const assemblyIndex = index % FUEL_ASSEMBLIES.length;
     const localIndex = Math.floor(index / FUEL_ASSEMBLIES.length);
     const assembly = FUEL_ASSEMBLIES[assemblyIndex];
-    const localColumns = 5;
+    const localColumns = 7;
     const localRows = Math.ceil(Math.ceil(count / FUEL_ASSEMBLIES.length) / localColumns);
     const column = localIndex % localColumns;
     const row = Math.floor(localIndex / localColumns);
@@ -90,7 +135,7 @@ function createNuclei(count: number) {
 
 function createNucleusGrid() {
   const grid: number[][] = Array.from(
-    { length: NUCLEUS_GRID_COLUMNS * Math.ceil(HEIGHT / NUCLEUS_GRID_SIZE) },
+    { length: NUCLEUS_GRID_COLUMNS * NUCLEUS_GRID_ROWS },
     () => [],
   );
   NUCLEI.forEach((nucleus, index) => {
@@ -101,22 +146,86 @@ function createNucleusGrid() {
   return grid;
 }
 
-function createNeutron(x: number, y: number, generation = 0, angle = Math.random() * Math.PI * 2): Particle {
+function createParticleBuffer(capacity = 512): ParticleBuffer {
+  return {
+    count: 0,
+    x: new Float32Array(capacity),
+    y: new Float32Array(capacity),
+    vx: new Float32Array(capacity),
+    vy: new Float32Array(capacity),
+    trailX: new Float32Array(capacity),
+    trailY: new Float32Array(capacity),
+    age: new Float32Array(capacity),
+    lifetime: new Float32Array(capacity),
+    generation: new Uint16Array(capacity),
+    passedControlRods: new Uint8Array(capacity),
+  };
+}
+
+function ensureParticleCapacity(buffer: ParticleBuffer, required: number) {
+  if (required <= buffer.x.length) return;
+  let capacity = buffer.x.length;
+  while (capacity < required) capacity *= 2;
+  const growFloat = (source: Float32Array) => {
+    const next = new Float32Array(capacity);
+    next.set(source);
+    return next;
+  };
+  const growUint16 = (source: Uint16Array) => {
+    const next = new Uint16Array(capacity);
+    next.set(source);
+    return next;
+  };
+  const growUint8 = (source: Uint8Array) => {
+    const next = new Uint8Array(capacity);
+    next.set(source);
+    return next;
+  };
+  buffer.x = growFloat(buffer.x);
+  buffer.y = growFloat(buffer.y);
+  buffer.vx = growFloat(buffer.vx);
+  buffer.vy = growFloat(buffer.vy);
+  buffer.trailX = growFloat(buffer.trailX);
+  buffer.trailY = growFloat(buffer.trailY);
+  buffer.age = growFloat(buffer.age);
+  buffer.lifetime = growFloat(buffer.lifetime);
+  buffer.generation = growUint16(buffer.generation);
+  buffer.passedControlRods = growUint8(buffer.passedControlRods);
+}
+
+function addNeutron(buffer: ParticleBuffer, x: number, y: number, generation = 0, angle = Math.random() * Math.PI * 2) {
+  ensureParticleCapacity(buffer, buffer.count + 1);
+  const index = buffer.count;
+  buffer.count += 1;
   const velocity = 58 + Math.random() * 38;
   const directionX = Math.cos(angle);
   const directionY = Math.sin(angle);
-  return {
-    x,
-    y,
-    vx: directionX * velocity,
-    vy: directionY * velocity,
-    trailX: directionX * 7,
-    trailY: directionY * 7,
-    age: 0,
-    lifetime: 11 + Math.random() * 6,
-    generation,
-    passedControlRods: new Set(),
-  };
+  buffer.x[index] = x;
+  buffer.y[index] = y;
+  buffer.vx[index] = directionX * velocity;
+  buffer.vy[index] = directionY * velocity;
+  buffer.trailX[index] = directionX * 7;
+  buffer.trailY[index] = directionY * 7;
+  buffer.age[index] = 0;
+  buffer.lifetime[index] = 11 + Math.random() * 6;
+  buffer.generation[index] = generation;
+  buffer.passedControlRods[index] = 0;
+}
+
+function copyParticle(source: ParticleBuffer, sourceIndex: number, target: ParticleBuffer) {
+  ensureParticleCapacity(target, target.count + 1);
+  const targetIndex = target.count;
+  target.count += 1;
+  target.x[targetIndex] = source.x[sourceIndex];
+  target.y[targetIndex] = source.y[sourceIndex];
+  target.vx[targetIndex] = source.vx[sourceIndex];
+  target.vy[targetIndex] = source.vy[sourceIndex];
+  target.trailX[targetIndex] = source.trailX[sourceIndex];
+  target.trailY[targetIndex] = source.trailY[sourceIndex];
+  target.age[targetIndex] = source.age[sourceIndex];
+  target.lifetime[targetIndex] = source.lifetime[sourceIndex];
+  target.generation[targetIndex] = source.generation[sourceIndex];
+  target.passedControlRods[targetIndex] = source.passedControlRods[sourceIndex];
 }
 
 export function ReactorSimulation({
@@ -124,25 +233,41 @@ export function ReactorSimulation({
   running,
   speed,
   rodAbsorption,
+  nucleusInteractionRadius,
+  selectedFuelAssembly,
+  replacementFuelAssembly,
+  replacementVersion,
   pulseVersion,
   resetVersion,
   onRodBankChange,
+  onFuelAssemblySelect,
   onTelemetry,
 }: Props) {
+  const particleBuffersRef = useRef<{ active: ParticleBuffer; scratch: ParticleBuffer } | null>(null);
+  const spentNucleiRef = useRef<Uint8Array | null>(null);
+  const fissionTimesRef = useRef<Float64Array | null>(null);
+  if (particleBuffersRef.current === null) {
+    particleBuffersRef.current = { active: createParticleBuffer(), scratch: createParticleBuffer() };
+  }
+  if (spentNucleiRef.current === null) spentNucleiRef.current = new Uint8Array(TOTAL_NUCLEI);
+  if (fissionTimesRef.current === null) fissionTimesRef.current = new Float64Array(TOTAL_NUCLEI);
   const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const rodsCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particlesRef = useRef<Particle[]>([]);
   const flashesRef = useRef<Flash[]>([]);
   const rodsRef = useRef(rods);
   const runningRef = useRef(running);
   const speedRef = useRef(speed);
   const rodAbsorptionRef = useRef(rodAbsorption);
+  const nucleusInteractionRadiusRef = useRef(nucleusInteractionRadius);
   const telemetryCallbackRef = useRef(onTelemetry);
   const totalFissionsRef = useRef(0);
   const energyRef = useRef(0);
-  const fissionTimesRef = useRef<number[]>([]);
-  const spentNucleiRef = useRef<Set<number>>(new Set());
+  const fissionTimesCountRef = useRef(0);
+  const fissionTimesHeadRef = useRef(0);
+  const spentNucleiCountRef = useRef(0);
+  const spentByAssemblyRef = useRef(new Uint16Array(FUEL_ASSEMBLY_COUNT));
+  const activeU235CountRef = useRef(TOTAL_NUCLEI);
   const baseLayerRef = useRef<HTMLCanvasElement | null>(null);
   const nucleiLayerRef = useRef<HTMLCanvasElement | null>(null);
   const nucleiLayerNeedsResetRef = useRef(true);
@@ -151,6 +276,9 @@ export function ReactorSimulation({
   const lastStaticCanvasDrawRef = useRef(0);
   const rodsCanvasNeedsRedrawRef = useRef(true);
   const drawnRodValueRef = useRef(-1);
+  const lastSpentWarningDrawRef = useRef(0);
+  const selectedFuelAssemblyRef = useRef(selectedFuelAssembly);
+  const replacementRef = useRef<{ assemblyIndex: number; startedAt: number; swapped: boolean } | null>(null);
   const draggingRef = useRef(false);
 
   useEffect(() => {
@@ -160,22 +288,40 @@ export function ReactorSimulation({
   useEffect(() => { runningRef.current = running; }, [running]);
   useEffect(() => { speedRef.current = speed; }, [speed]);
   useEffect(() => { rodAbsorptionRef.current = rodAbsorption; }, [rodAbsorption]);
+  useEffect(() => { nucleusInteractionRadiusRef.current = nucleusInteractionRadius; }, [nucleusInteractionRadius]);
   useEffect(() => { telemetryCallbackRef.current = onTelemetry; }, [onTelemetry]);
+  useEffect(() => {
+    selectedFuelAssemblyRef.current = selectedFuelAssembly;
+    rodsCanvasNeedsRedrawRef.current = true;
+  }, [selectedFuelAssembly]);
+  useEffect(() => {
+    if (replacementVersion === 0 || replacementFuelAssembly === null) return;
+    replacementRef.current = { assemblyIndex: replacementFuelAssembly, startedAt: performance.now(), swapped: false };
+    rodsCanvasNeedsRedrawRef.current = true;
+  }, [replacementVersion, replacementFuelAssembly]);
 
   useEffect(() => {
     if (pulseVersion === 0) return;
-    const particles = particlesRef.current;
+    const particles = particleBuffersRef.current!.active;
     for (let index = 0; index < 14; index += 1) {
       const angle = (index / 14) * Math.PI * 2 + (Math.random() - 0.5) * 0.22;
-      particles.push(createNeutron(WIDTH / 2, CORE.y + CORE.height / 2, 0, angle));
+      addNeutron(particles, PULSE_SOURCE.x, PULSE_SOURCE.y, 0, angle);
     }
   }, [pulseVersion]);
 
   useEffect(() => {
-    particlesRef.current = [];
+    const particleBuffers = particleBuffersRef.current!;
+    const spentNuclei = spentNucleiRef.current!;
+    particleBuffers.active.count = 0;
+    particleBuffers.scratch.count = 0;
     flashesRef.current = [];
-    fissionTimesRef.current = [];
-    spentNucleiRef.current = new Set();
+    fissionTimesCountRef.current = 0;
+    fissionTimesHeadRef.current = 0;
+    spentNuclei.fill(0);
+    spentNucleiCountRef.current = 0;
+    spentByAssemblyRef.current.fill(0);
+    activeU235CountRef.current = TOTAL_NUCLEI;
+    replacementRef.current = null;
     nucleiLayerNeedsResetRef.current = true;
     staticCanvasNeedsRedrawRef.current = true;
     totalFissionsRef.current = 0;
@@ -214,6 +360,10 @@ export function ReactorSimulation({
     let lastTelemetry = 0;
     let previousTelemetry: Telemetry | null = null;
     const particleRenderer = createParticleRenderer(canvas);
+    const particleBuffers = particleBuffersRef.current!;
+    const spentNuclei = spentNucleiRef.current!;
+    const spentByAssembly = spentByAssemblyRef.current;
+    const fissionTimes = fissionTimesRef.current!;
 
     const ensureBaseLayer = () => {
       let layer = baseLayerRef.current;
@@ -240,7 +390,10 @@ export function ReactorSimulation({
         const context = layer.getContext('2d');
         if (context) {
           context.clearRect(0, 0, WIDTH, HEIGHT);
-          NUCLEI.forEach((nucleus, index) => drawNucleus(context, nucleus, index));
+          NUCLEI.forEach((nucleus, index) => {
+            if (spentNuclei[index] === NUCLEUS_DAUGHTER) drawFissionProducts(context, nucleus, index);
+            else drawNucleus(context, nucleus, index);
+          });
         }
         nucleiLayerNeedsResetRef.current = false;
       }
@@ -252,9 +405,23 @@ export function ReactorSimulation({
       const context = layer.getContext('2d');
       if (!context) return;
       const nucleus = NUCLEI[index];
-      context.clearRect(nucleus.x - 6.5, nucleus.y - 6.5, 13, 13);
+      context.clearRect(nucleus.x - 5.5, nucleus.y - 5.5, 11, 11);
       drawFissionProducts(context, nucleus, index);
       nucleiVisualDirtyRef.current = true;
+    };
+
+    const replaceFuelAssembly = (assemblyIndex: number) => {
+      for (let nucleusIndex = assemblyIndex; nucleusIndex < NUCLEI.length; nucleusIndex += FUEL_ASSEMBLIES.length) {
+        const previousState = spentNuclei[nucleusIndex];
+        if (previousState === NUCLEUS_DAUGHTER) {
+          spentNucleiCountRef.current -= 1;
+          activeU235CountRef.current += 1;
+        }
+        spentNuclei[nucleusIndex] = NUCLEUS_U235;
+      }
+      spentByAssembly[assemblyIndex] = 0;
+      nucleiLayerNeedsResetRef.current = true;
+      staticCanvasNeedsRedrawRef.current = true;
     };
 
     const animate = (now: number) => {
@@ -270,14 +437,19 @@ export function ReactorSimulation({
       if (now - lastTelemetry > 500) {
         lastTelemetry = now;
         const cutoff = now - 1000;
-        fissionTimesRef.current = fissionTimesRef.current.filter((time) => time >= cutoff);
+        while (
+          fissionTimesHeadRef.current < fissionTimesCountRef.current &&
+          fissionTimes[fissionTimesHeadRef.current] < cutoff
+        ) {
+          fissionTimesHeadRef.current += 1;
+        }
         const telemetry = {
-          neutrons: particlesRef.current.length,
-          fissionsPerSecond: fissionTimesRef.current.length,
+          neutrons: particleBuffers.active.count,
+          fissionsPerSecond: fissionTimesCountRef.current - fissionTimesHeadRef.current,
           totalFissions: totalFissionsRef.current,
           energyGJ: energyRef.current,
-          activeNuclei: NUCLEI.length - spentNucleiRef.current.size,
-          spentNuclei: spentNucleiRef.current.size,
+          activeNuclei: activeU235CountRef.current,
+          spentNuclei: spentNucleiCountRef.current,
         };
         const changed = !previousTelemetry || Object.keys(telemetry).some(
           (key) => telemetry[key as keyof Telemetry] !== previousTelemetry?.[key as keyof Telemetry],
@@ -291,40 +463,55 @@ export function ReactorSimulation({
     };
 
     const updateSimulation = (delta: number, now: number) => {
-      const particles = particlesRef.current;
-      const next: Particle[] = [];
-      const newborns: Particle[] = [];
+      const particles = particleBuffers.active;
+      const next = particleBuffers.scratch;
+      next.count = 0;
       const rodDepth = (rodsRef.current[0] / 100) * (CORE.height - 22);
 
-      for (const neutron of particles) {
-        neutron.age += delta;
-        neutron.x += neutron.vx * delta;
-        neutron.y += neutron.vy * delta;
+      for (let particleIndex = 0; particleIndex < particles.count; particleIndex += 1) {
+        const previousX = particles.x[particleIndex];
+        const previousY = particles.y[particleIndex];
+        particles.age[particleIndex] += delta;
+        particles.x[particleIndex] += particles.vx[particleIndex] * delta;
+        particles.y[particleIndex] += particles.vy[particleIndex] * delta;
+        const neutronX = particles.x[particleIndex];
+        const neutronY = particles.y[particleIndex];
 
         const escaped =
-          neutron.x < CORE.x || neutron.x > CORE.x + CORE.width ||
-          neutron.y < CORE.y || neutron.y > CORE.y + CORE.height ||
-          neutron.age > neutron.lifetime;
+          neutronX < CORE.x || neutronX > CORE.x + CORE.width ||
+          neutronY < CORE.y || neutronY > CORE.y + CORE.height ||
+          particles.age[particleIndex] > particles.lifetime[particleIndex];
         if (escaped) continue;
 
-        const directRodHit = ROD_X.findIndex(
-          (rodX, index) => !neutron.passedControlRods.has(index) && Math.abs(neutron.x - rodX) < 16 && neutron.y < CORE.y + rodDepth,
-        );
+        let directRodHit = -1;
+        const passedControlRods = particles.passedControlRods[particleIndex];
+        for (let rodIndex = 0; rodIndex < ROD_X.length; rodIndex += 1) {
+          if (
+            (passedControlRods & (1 << rodIndex)) === 0 &&
+            Math.abs(neutronX - ROD_X[rodIndex]) < 16 &&
+            neutronY < CORE.y + rodDepth
+          ) {
+            directRodHit = rodIndex;
+            break;
+          }
+        }
         if (directRodHit !== -1) {
           if (Math.random() < rodAbsorptionRef.current / 100) {
-            flashesRef.current.push({ x: neutron.x, y: neutron.y, age: 0, kind: 'absorbed' });
+            flashesRef.current.push({ x: neutronX, y: neutronY, age: 0, kind: 'absorbed' });
             continue;
           }
-          neutron.passedControlRods.add(directRodHit);
+          particles.passedControlRods[particleIndex] |= 1 << directRodHit;
         }
 
-        const nearbyIndex = collidingNucleus(
-          neutron.x,
-          neutron.y,
-          spentNucleiRef.current,
-          NUCLEUS_INTERACTION_RADIUS ** 2,
+        const nearbyIndex = collidingNucleusAlongPath(
+          previousX,
+          previousY,
+          neutronX,
+          neutronY,
+          spentNuclei,
+          nucleusInteractionRadiusRef.current,
         );
-        if (nearbyIndex !== -1 && particles.length + newborns.length < 360) {
+        if (nearbyIndex !== -1) {
           const nearby = NUCLEI[nearbyIndex];
           const fissionX = nearby.x;
           const fissionY = nearby.y;
@@ -332,22 +519,27 @@ export function ReactorSimulation({
           const baseAngle = Math.random() * Math.PI * 2;
           for (let child = 0; child < count; child += 1) {
             const angle = baseAngle + (child / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-            newborns.push(createNeutron(fissionX, fissionY, neutron.generation + 1, angle));
+            addNeutron(next, fissionX, fissionY, particles.generation[particleIndex] + 1, angle);
           }
           flashesRef.current.push({ x: fissionX, y: fissionY, age: 0, kind: 'fission' });
-          spentNucleiRef.current.add(nearbyIndex);
+          spentNuclei[nearbyIndex] = NUCLEUS_DAUGHTER;
+          spentNucleiCountRef.current += 1;
+          const assemblyIndex = nearbyIndex % FUEL_ASSEMBLIES.length;
+          spentByAssembly[assemblyIndex] += 1;
+          if (spentByAssembly[assemblyIndex] >= SPENT_FUEL_THRESHOLD) rodsCanvasNeedsRedrawRef.current = true;
+          activeU235CountRef.current -= 1;
           markNucleusSpent(nearbyIndex);
-          fissionTimesRef.current.push(now);
+          fissionTimes[fissionTimesCountRef.current] = now;
+          fissionTimesCountRef.current += 1;
           totalFissionsRef.current += 1;
           energyRef.current += 0.0064;
           continue;
         }
 
-        next.push(neutron);
+        copyParticle(particles, particleIndex, next);
       }
-      next.push(...newborns);
-      if (next.length > 360) next.length = 360;
-      particlesRef.current = next;
+      particleBuffers.active = next;
+      particleBuffers.scratch = particles;
     };
 
     const updateFlashes = (delta: number) => {
@@ -368,6 +560,18 @@ export function ReactorSimulation({
       const rodsCanvas = rodsCanvasRef.current;
       if (!staticCanvas || !rodsCanvas) return;
 
+      const replacement = replacementRef.current;
+      let replacementProgress: number | null = null;
+      if (replacement) {
+        replacementProgress = Math.min(1, (now - replacement.startedAt) / 920);
+        if (!replacement.swapped && replacementProgress >= 0.48) {
+          replacement.swapped = true;
+          replaceFuelAssembly(replacement.assemblyIndex);
+        }
+        rodsCanvasNeedsRedrawRef.current = true;
+        if (replacementProgress >= 1) replacementRef.current = null;
+      }
+
       const shouldRefreshStatic = staticCanvasNeedsRedrawRef.current || (
         nucleiVisualDirtyRef.current && now - lastStaticCanvasDrawRef.current >= 125
       );
@@ -385,25 +589,37 @@ export function ReactorSimulation({
       }
 
       const rodValue = rodsRef.current[0];
+      const hasSpentFuel = spentByAssembly.some((count) => count >= SPENT_FUEL_THRESHOLD);
+      if (hasSpentFuel && now - lastSpentWarningDrawRef.current >= 160) {
+        rodsCanvasNeedsRedrawRef.current = true;
+        lastSpentWarningDrawRef.current = now;
+      }
       if (rodsCanvasNeedsRedrawRef.current || drawnRodValueRef.current !== rodValue) {
         const rodsContext = rodsCanvas.getContext('2d');
         if (rodsContext) {
           rodsContext.setTransform(rodsCanvas.width / WIDTH, 0, 0, rodsCanvas.height / HEIGHT, 0, 0);
           rodsContext.clearRect(0, 0, WIDTH, HEIGHT);
           drawRodBank(rodsContext, rodValue);
+          drawFuelAssemblySelection(
+            rodsContext,
+            selectedFuelAssemblyRef.current,
+            replacement ? { assemblyIndex: replacement.assemblyIndex, progress: replacementProgress ?? 0 } : null,
+            spentByAssembly,
+            now,
+          );
         }
         drawnRodValueRef.current = rodValue;
         rodsCanvasNeedsRedrawRef.current = false;
       }
 
       if (particleRenderer) {
-        particleRenderer.draw(particlesRef.current, flashesRef.current);
+        particleRenderer.draw(particleBuffers.active, flashesRef.current);
       } else {
         const context = target.getContext('2d');
         if (!context) return;
         context.setTransform(target.width / WIDTH, 0, 0, target.height / HEIGHT, 0, 0);
         context.clearRect(0, 0, WIDTH, HEIGHT);
-        drawDynamicCore(context, particlesRef.current, flashesRef.current);
+        drawDynamicCore(context, particleBuffers.active, flashesRef.current);
       }
     };
 
@@ -411,7 +627,7 @@ export function ReactorSimulation({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const pointerPosition = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const pointerPosition = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     return {
       x: ((event.clientX - bounds.left) / bounds.width) * WIDTH,
@@ -423,6 +639,10 @@ export function ReactorSimulation({
     const rodDepth = (rodsRef.current[0] / 100) * (CORE.height - 22);
     return ROD_X.some((rodX) => Math.abs(x - rodX) < 30) && y >= 30 && y <= CORE.y + rodDepth + 34;
   };
+
+  const fuelAssemblyAtPoint = (x: number, y: number) => FUEL_ASSEMBLIES.findIndex(
+    (assembly) => x >= assembly.x && x <= assembly.x + assembly.width && y >= assembly.y && y <= assembly.y + assembly.height,
+  );
 
   const updateBankFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const { y } = pointerPosition(event);
@@ -438,7 +658,18 @@ export function ReactorSimulation({
       <canvas
         ref={canvasRef}
         className="reactor-canvas reactor-canvas-layer"
-        aria-label="Interactive reactor core. The clustered red and blue particles are uranium-235 nuclei. Bright white particles are neutrons. Drag any cyan control rod grip vertically to move the whole rod bank."
+        aria-label="Interactive reactor core. Double-click a fuel rod to select it for replacement. Drag any cyan control rod grip vertically to move the whole control-rod bank."
+        onClick={(event) => {
+          const point = pointerPosition(event);
+          if (fuelAssemblyAtPoint(point.x, point.y) === -1 && !isNearRodBank(point.x, point.y)) {
+            onFuelAssemblySelect(null);
+          }
+        }}
+        onDoubleClick={(event) => {
+          const point = pointerPosition(event);
+          const assemblyIndex = fuelAssemblyAtPoint(point.x, point.y);
+          onFuelAssemblySelect(assemblyIndex === -1 ? null : assemblyIndex);
+        }}
         onPointerDown={(event) => {
           const point = pointerPosition(event);
           if (!isNearRodBank(point.x, point.y)) return;
@@ -452,7 +683,9 @@ export function ReactorSimulation({
             return;
           }
           const point = pointerPosition(event);
-          event.currentTarget.style.cursor = isNearRodBank(point.x, point.y) ? 'ns-resize' : 'default';
+          event.currentTarget.style.cursor = isNearRodBank(point.x, point.y)
+            ? 'ns-resize'
+            : fuelAssemblyAtPoint(point.x, point.y) !== -1 ? 'pointer' : 'default';
         }}
         onPointerUp={(event) => {
           draggingRef.current = false;
@@ -464,24 +697,45 @@ export function ReactorSimulation({
   );
 }
 
-function collidingNucleus(x: number, y: number, spent: Set<number>, radiusSquared: number) {
-  const cellX = Math.floor(x / NUCLEUS_GRID_SIZE);
-  const cellY = Math.floor(y / NUCLEUS_GRID_SIZE);
-  for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
-    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
-      const candidateCellX = cellX + offsetX;
-      const candidateCellY = cellY + offsetY;
-      if (candidateCellX < 0 || candidateCellY < 0 || candidateCellX >= NUCLEUS_GRID_COLUMNS) continue;
-      const candidates = NUCLEUS_GRID[candidateCellY * NUCLEUS_GRID_COLUMNS + candidateCellX];
-      if (!candidates) continue;
+function collidingNucleusAlongPath(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  spent: Uint8Array,
+  radius: number,
+) {
+  const minCellX = Math.max(0, Math.floor((Math.min(startX, endX) - radius) / NUCLEUS_GRID_SIZE));
+  const maxCellX = Math.min(NUCLEUS_GRID_COLUMNS - 1, Math.floor((Math.max(startX, endX) + radius) / NUCLEUS_GRID_SIZE));
+  const minCellY = Math.max(0, Math.floor((Math.min(startY, endY) - radius) / NUCLEUS_GRID_SIZE));
+  const maxCellY = Math.min(NUCLEUS_GRID_ROWS - 1, Math.floor((Math.max(startY, endY) + radius) / NUCLEUS_GRID_SIZE));
+  const pathX = endX - startX;
+  const pathY = endY - startY;
+  const pathLengthSquared = pathX * pathX + pathY * pathY;
+  const radiusSquared = radius * radius;
+  let firstHit = -1;
+  let firstHitProgress = Number.POSITIVE_INFINITY;
+
+  for (let cellY = minCellY; cellY <= maxCellY; cellY += 1) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX += 1) {
+      const candidates = NUCLEUS_GRID[cellY * NUCLEUS_GRID_COLUMNS + cellX];
       for (const index of candidates) {
-        if (spent.has(index)) continue;
+        if (spent[index] !== 0) continue;
         const nucleus = NUCLEI[index];
-        if ((nucleus.x - x) ** 2 + (nucleus.y - y) ** 2 < radiusSquared) return index;
+        const progress = pathLengthSquared === 0
+          ? 0
+          : Math.max(0, Math.min(1, ((nucleus.x - startX) * pathX + (nucleus.y - startY) * pathY) / pathLengthSquared));
+        const closestX = startX + pathX * progress;
+        const closestY = startY + pathY * progress;
+        const distanceSquared = (nucleus.x - closestX) ** 2 + (nucleus.y - closestY) ** 2;
+        if (distanceSquared < radiusSquared && progress < firstHitProgress) {
+          firstHit = index;
+          firstHitProgress = progress;
+        }
       }
     }
   }
-  return -1;
+  return firstHit;
 }
 
 function drawStaticCore(context: CanvasRenderingContext2D) {
@@ -526,11 +780,11 @@ function drawStaticCore(context: CanvasRenderingContext2D) {
   context.fillStyle = '#72909a';
   context.font = '600 10px monospace';
   context.textAlign = 'center';
-  context.fillText('COUPLED CONTROL ROD BANK', WIDTH / 2, CORE.y - 18);
+  context.fillText('CONTROL RODS', WIDTH / 2, CORE.y - 18);
   context.fillStyle = 'rgba(130, 184, 196, .44)';
   context.font = '600 9px monospace';
   context.textAlign = 'left';
-  context.fillText(`${TOTAL_NUCLEI} × U-235 FUEL NUCLEI`, CORE.x + 22, CORE.y + CORE.height - 17);
+  context.fillText(`${TOTAL_NUCLEI} × FUEL NUCLEI`, CORE.x + 22, CORE.y + CORE.height - 17);
   context.textAlign = 'right';
   context.fillText('COLOURED FRAGMENTS = DAUGHTER PRODUCTS', CORE.x + CORE.width - 22, CORE.y + CORE.height - 17);
   context.restore();
@@ -560,6 +814,63 @@ function drawRodBank(context: CanvasRenderingContext2D, rodValue: number) {
     context.fillStyle = '#062027';
     context.font = '900 9px monospace';
     context.fillText('↕', rodX, gripY + 3);
+  }
+  context.restore();
+}
+
+function drawFuelAssemblySelection(
+  context: CanvasRenderingContext2D,
+  selectedAssembly: number | null,
+  replacement: { assemblyIndex: number; progress: number } | null,
+  spentByAssembly: Uint16Array,
+  now: number,
+) {
+  const hasSpentFuel = spentByAssembly.some((count) => count >= SPENT_FUEL_THRESHOLD);
+  if (selectedAssembly === null && replacement === null && !hasSpentFuel) return;
+  context.save();
+  if (selectedAssembly !== null) {
+    const assembly = FUEL_ASSEMBLIES[selectedAssembly];
+    context.strokeStyle = '#ffcf5a';
+    context.lineWidth = 3;
+    context.shadowColor = '#ffbd43';
+    context.shadowBlur = 13;
+    roundedRect(context, assembly.x - 4, assembly.y - 4, assembly.width + 8, assembly.height + 8, 14);
+    context.stroke();
+  }
+  if (replacement) {
+    const assembly = FUEL_ASSEMBLIES[replacement.assemblyIndex];
+    const flash = Math.sin(replacement.progress * Math.PI);
+    const fade = replacement.progress < 0.48
+      ? replacement.progress / 0.48
+      : 1 - (replacement.progress - 0.48) / 0.52;
+    context.shadowColor = '#b9ffff';
+    context.shadowBlur = 34 * flash;
+    context.fillStyle = `rgba(190, 255, 248, ${Math.max(0, fade) * 0.72})`;
+    roundedRect(context, assembly.x - 2, assembly.y - 2, assembly.width + 4, assembly.height + 4, 13);
+    context.fill();
+    context.strokeStyle = `rgba(126, 255, 226, ${0.35 + flash * 0.65})`;
+    context.lineWidth = 4;
+    context.stroke();
+  }
+  if (hasSpentFuel) {
+    const pulse = 0.38 + ((Math.sin(now / 125) + 1) / 2) * 0.62;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = '900 7px monospace';
+    for (let assemblyIndex = 0; assemblyIndex < FUEL_ASSEMBLIES.length; assemblyIndex += 1) {
+      if (spentByAssembly[assemblyIndex] < SPENT_FUEL_THRESHOLD) continue;
+      const assembly = FUEL_ASSEMBLIES[assemblyIndex];
+      const centreX = assembly.x + assembly.width / 2;
+      const labelY = assembly.y - 20;
+      context.fillStyle = `rgba(255, 191, 55, ${0.72 * pulse})`;
+      context.shadowColor = '#ffbd43';
+      context.shadowBlur = 12 * pulse;
+      roundedRect(context, centreX - 29, labelY - 7, 58, 14, 5);
+      context.fill();
+      context.shadowBlur = 0;
+      context.fillStyle = '#241701';
+      context.fillText('FUEL ROD SPENT', centreX, labelY + 0.5);
+    }
   }
   context.restore();
 }
@@ -637,39 +948,61 @@ function createParticleRenderer(canvas: HTMLCanvasElement) {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+  let lineData: Float32Array<ArrayBuffer> = new Float32Array(0);
+  let pointData: Float32Array<ArrayBuffer> = new Float32Array(0);
+  let lineGpuCapacity = 0;
+  let pointGpuCapacity = 0;
+  const growStagingBuffer = (current: Float32Array<ArrayBuffer>, required: number): Float32Array<ArrayBuffer> => {
+    if (current.length >= required) return current;
+    let capacity = Math.max(1024, current.length);
+    while (capacity < required) capacity *= 2;
+    return new Float32Array(capacity);
+  };
+
   return {
-    draw(particles: Particle[], flashes: Flash[]) {
+    draw(particles: ParticleBuffer, flashes: Flash[]) {
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      if (particles.length > 0) {
-        const lineData = new Float32Array(particles.length * 4);
-        particles.forEach((particle, index) => {
-          const offset = index * 4;
-          lineData[offset] = particle.x - particle.trailX;
-          lineData[offset + 1] = particle.y - particle.trailY;
-          lineData[offset + 2] = particle.x;
-          lineData[offset + 3] = particle.y;
-        });
+      const renderStride = Math.max(1, Math.ceil(particles.count / MAX_RENDERED_NEUTRONS));
+      const renderedParticleCount = Math.ceil(particles.count / renderStride);
+
+      if (renderedParticleCount > 0) {
+        const lineValueCount = renderedParticleCount * 4;
+        lineData = growStagingBuffer(lineData, lineValueCount);
+        let renderedIndex = 0;
+        for (let particleIndex = 0; particleIndex < particles.count; particleIndex += renderStride) {
+          const offset = renderedIndex * 4;
+          lineData[offset] = particles.x[particleIndex] - particles.trailX[particleIndex];
+          lineData[offset + 1] = particles.y[particleIndex] - particles.trailY[particleIndex];
+          lineData[offset + 2] = particles.x[particleIndex];
+          lineData[offset + 3] = particles.y[particleIndex];
+          renderedIndex += 1;
+        }
         gl.useProgram(lineProgram);
         gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, lineData, gl.DYNAMIC_DRAW);
+        if (lineGpuCapacity < lineData.byteLength) {
+          lineGpuCapacity = lineData.byteLength;
+          gl.bufferData(gl.ARRAY_BUFFER, lineGpuCapacity, gl.DYNAMIC_DRAW);
+        }
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, lineData.subarray(0, lineValueCount));
         gl.enableVertexAttribArray(linePosition);
         gl.vertexAttribPointer(linePosition, 2, gl.FLOAT, false, 0, 0);
         gl.uniform2f(lineResolution, WIDTH, HEIGHT);
-        gl.drawArrays(gl.LINES, 0, particles.length * 2);
+        gl.drawArrays(gl.LINES, 0, renderedParticleCount * 2);
       }
 
-      const pointCount = particles.length + flashes.length;
+      const pointCount = renderedParticleCount + flashes.length;
       if (pointCount === 0) return;
-      const pointData = new Float32Array(pointCount * 5);
+      const pointValueCount = pointCount * 5;
+      pointData = growStagingBuffer(pointData, pointValueCount);
       const pixelScale = canvas.width / WIDTH;
       let pointIndex = 0;
-      for (const particle of particles) {
+      for (let particleIndex = 0; particleIndex < particles.count; particleIndex += renderStride) {
         const offset = pointIndex * 5;
-        pointData[offset] = particle.x;
-        pointData[offset + 1] = particle.y;
+        pointData[offset] = particles.x[particleIndex];
+        pointData[offset + 1] = particles.y[particleIndex];
         pointData[offset + 2] = Math.max(3, 10 * pixelScale);
         pointData[offset + 3] = 0;
         pointData[offset + 4] = 0;
@@ -687,7 +1020,11 @@ function createParticleRenderer(canvas: HTMLCanvasElement) {
 
       gl.useProgram(pointProgram);
       gl.bindBuffer(gl.ARRAY_BUFFER, pointBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, pointData, gl.DYNAMIC_DRAW);
+      if (pointGpuCapacity < pointData.byteLength) {
+        pointGpuCapacity = pointData.byteLength;
+        gl.bufferData(gl.ARRAY_BUFFER, pointGpuCapacity, gl.DYNAMIC_DRAW);
+      }
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, pointData.subarray(0, pointValueCount));
       const stride = 5 * Float32Array.BYTES_PER_ELEMENT;
       gl.enableVertexAttribArray(pointPosition);
       gl.vertexAttribPointer(pointPosition, 2, gl.FLOAT, false, stride, 0);
@@ -722,34 +1059,35 @@ function createWebGLProgram(gl: WebGLRenderingContext, vertexSource: string, fra
   return gl.getProgramParameter(program, gl.LINK_STATUS) ? program : null;
 }
 
-function drawDynamicCore(context: CanvasRenderingContext2D, particles: Particle[], flashes: Flash[]) {
+function drawDynamicCore(context: CanvasRenderingContext2D, particles: ParticleBuffer, flashes: Flash[]) {
+  const renderStride = Math.max(1, Math.ceil(particles.count / MAX_RENDERED_NEUTRONS));
   context.save();
   context.beginPath();
-  for (const particle of particles) {
-    context.moveTo(particle.x - particle.trailX, particle.y - particle.trailY);
-    context.lineTo(particle.x, particle.y);
+  for (let index = 0; index < particles.count; index += renderStride) {
+    context.moveTo(particles.x[index] - particles.trailX[index], particles.y[index] - particles.trailY[index]);
+    context.lineTo(particles.x[index], particles.y[index]);
   }
   context.strokeStyle = 'rgba(127, 236, 249, .38)';
   context.lineWidth = 1.4;
   context.stroke();
 
   context.beginPath();
-  for (const particle of particles) {
-    context.rect(particle.x - 4.5, particle.y - 4.5, 9, 9);
+  for (let index = 0; index < particles.count; index += renderStride) {
+    context.rect(particles.x[index] - 4.5, particles.y[index] - 4.5, 9, 9);
   }
   context.fillStyle = 'rgba(105, 231, 244, .14)';
   context.fill();
 
   context.beginPath();
-  for (const particle of particles) {
-    context.rect(particle.x - 2, particle.y - 2, 4, 4);
+  for (let index = 0; index < particles.count; index += renderStride) {
+    context.rect(particles.x[index] - 2, particles.y[index] - 2, 4, 4);
   }
   context.fillStyle = '#eaffff';
   context.fill();
 
   drawFlashes(context, flashes);
 
-  const surge = Math.max(0, Math.min(1, (particles.length - 55) / 115));
+  const surge = Math.max(0, Math.min(1, (particles.count - 55) / 115));
   if (surge > 0) {
     context.strokeStyle = `rgba(255, 104, 62, ${0.18 + surge * 0.56})`;
     context.lineWidth = 3;
@@ -769,7 +1107,7 @@ function drawNucleus(context: CanvasRenderingContext2D, nucleus: (typeof NUCLEI)
   context.translate(nucleus.x, nucleus.y);
   context.rotate(nucleus.rotation);
   context.beginPath();
-  context.arc(0, 0, 5.6, 0, Math.PI * 2);
+  context.arc(0, 0, 4.8, 0, Math.PI * 2);
   context.fillStyle = 'rgba(255, 189, 67, .05)';
   context.fill();
   context.strokeStyle = 'rgba(255, 211, 96, .24)';

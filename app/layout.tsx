@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('http://localhost:3000'),
+  metadataBase: new URL('https://awm11.github.io/nuclear-reactor/'),
   title: 'Reactor Control — Nuclear Chain Reaction Simulator',
   description:
     'An interactive educational simulation of reactor criticality, neutron transport, and control rod response.',
