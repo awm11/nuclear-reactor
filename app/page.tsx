@@ -335,11 +335,49 @@ export default function Home() {
         </aside>
       </section>
 
+      <BuyMeACoffee />
+
       <footer>
         <span>Educational aggregate model · not for operational use</span>
         <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · ↑↓: rods · ←→: fuel · R: replace · S: SCRAM</span>
       </footer>
     </main>
+  );
+}
+
+function BuyMeACoffee() {
+  const buttonSlotRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const slot = buttonSlotRef.current;
+    if (!slot) return;
+
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js';
+    script.async = true;
+    script.dataset.name = 'bmc-button';
+    script.dataset.slug = 'awmPhysics';
+    script.dataset.color = '#3EE4E1';
+    script.dataset.emoji = '';
+    script.dataset.font = 'Lato';
+    script.dataset.text = 'Buy me a coffee';
+    script.dataset.outlineColor = '#17687C';
+    script.dataset.fontColor = '#061219';
+    script.dataset.coffeeColor = '#FFFFFF';
+    slot.appendChild(script);
+
+    return () => { slot.replaceChildren(); };
+  }, []);
+
+  return (
+    <aside className="support-strip" aria-label="Support AWM Physics">
+      <div>
+        <p className="eyebrow">Keep the experiments running</p>
+        <strong>Enjoyed the simulator? Support more interactive physics.</strong>
+      </div>
+      <div className="bmc-slot" ref={buttonSlotRef} />
+    </aside>
   );
 }
 
