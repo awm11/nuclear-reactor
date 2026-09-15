@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import './advanced-settings.css';
 import './favicon-link.css';
 import './layout-alignment.css';
+import './reactor-status.css';
 import './support-button.css';
 import './zoom-button.css';
 
@@ -203,7 +204,6 @@ export default function Home() {
           />
         </a>
         <div className="brand-copy">
-          <p className="eyebrow">Interactive science playground</p>
           <h1>Chain Reaction <span>Lab</span></h1>
         </div>
         <div className="lab-pill">U-235 · live sandbox</div>
