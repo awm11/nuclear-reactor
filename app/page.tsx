@@ -238,7 +238,7 @@ export default function Home() {
         </aside>
 
         <div className="reactor-panel panel">
-          <div className="panel-heading">
+          <>
             <div>
               <p className="eyebrow">The tiny-particle big-energy machine</p>
               <h2>Make it critical.</h2>
@@ -246,7 +246,7 @@ export default function Home() {
             <output className={`criticality-badge ${state.tone}`} aria-live="polite">
               <span /> {state.label} · k<sub>eff</sub> {kEffective.toFixed(2)}
             </output>
-          </div>
+          </>
 
           <div className={`core-stage ${temperatureWarning ? 'warning' : ''} ${overheating ? 'overheat' : ''}`}>
             <div className="chamber-label">
