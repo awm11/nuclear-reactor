@@ -219,10 +219,6 @@ export default function Home() {
             <div className="readout-header"><span>POWER HISTORY</span><strong>{Math.round((power / 1600) * 100)}%</strong></div>
             <PowerHistory values={history} />
             <div className="readout-scale"><span>30s ago</span><span>now</span></div>
-            <div className="chain-note">
-              <span className="chain-icon">3n</span>
-              <p><strong>The chain is the engine.</strong> Each gold flash consumes one U-235 nucleus and releases exactly 2 or 3 neutrons. The purple and green fragments are different daughter elements, so they cannot fission again.</p>
-            </div>
           </section>
         </aside>
 
