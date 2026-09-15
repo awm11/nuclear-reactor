@@ -23,6 +23,7 @@ import {
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import './advanced-settings.css';
+import './layout-alignment.css';
 import './support-button.css';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
