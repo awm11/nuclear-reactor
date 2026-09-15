@@ -251,6 +251,30 @@ export default function Home() {
                 </span>
               </button>
             </RodThrottle>
+            {selectedFuelRod !== null && (
+              <div className="fuel-replacement-control">
+                <div>
+                  <span>Fuel rod {selectedFuelRod + 1} selected</span>
+                  <small>Double-click another rod to change selection</small>
+                </div>
+                <button onClick={replaceSelectedFuelRod}>
+                  <RefreshCw size={14} /> Replace fuel rod
+                </button>
+              </div>
+            )}
+            <div className="control-buttons">
+              <button className="primary-button" onClick={startOrPulse}>
+                <Sparkles size={16} /> {started ? 'Add neutron pulse' : 'Start chain reaction'}
+              </button>
+              <button className="icon-button" onClick={() => setRunning((value) => !value)} aria-label={running ? 'Pause simulation' : 'Resume simulation'}>
+                {running ? <Pause size={17} /> : <Play size={17} />}
+              </button>
+              <button className="icon-button" onClick={reset} aria-label="Reset simulation"><RotateCcw size={17} /></button>
+            </div>
+            <label className="speed-control">
+              <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
+              <input type="range" min="0.4" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
+            </label>
             <label className="absorption-control">
               <div className="control-label"><span>Control-rod collision</span><strong>{rodAbsorption}% capture</strong></div>
               <input
@@ -278,30 +302,6 @@ export default function Home() {
                 onChange={(event) => setNucleusInteractionRadius(Number(event.target.value))}
               />
               <div className="range-labels"><span>Harder to hit</span><span>Larger cross-section</span></div>
-            </label>
-            {selectedFuelRod !== null && (
-              <div className="fuel-replacement-control">
-                <div>
-                  <span>Fuel rod {selectedFuelRod + 1} selected</span>
-                  <small>Double-click another rod to change selection</small>
-                </div>
-                <button onClick={replaceSelectedFuelRod}>
-                  <RefreshCw size={14} /> Replace fuel rod
-                </button>
-              </div>
-            )}
-            <div className="control-buttons">
-              <button className="primary-button" onClick={startOrPulse}>
-                <Sparkles size={16} /> {started ? 'Add neutron pulse' : 'Start chain reaction'}
-              </button>
-              <button className="icon-button" onClick={() => setRunning((value) => !value)} aria-label={running ? 'Pause simulation' : 'Resume simulation'}>
-                {running ? <Pause size={17} /> : <Play size={17} />}
-              </button>
-              <button className="icon-button" onClick={reset} aria-label="Reset simulation"><RotateCcw size={17} /></button>
-            </div>
-            <label className="speed-control">
-              <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
-              <input type="range" min="0.4" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
             </label>
           </section>
 
