@@ -907,16 +907,43 @@ function drawStaticCore(context: CanvasRenderingContext2D) {
 function drawRodBank(context: CanvasRenderingContext2D, rodValue: number) {
   context.save();
   const rodDepth = (rodValue / 100) * (CORE.height - 22);
+  const housingBottom = CORE.y - 7;
+  context.beginPath();
+  context.rect(CORE.x, housingBottom, CORE.width, CORE.height + 7);
+  context.clip();
+
   for (const rodX of ROD_X) {
+    const rodTop = CORE.y - 28;
+    const rodBottom = CORE.y + rodDepth;
     const rodGradient = context.createLinearGradient(rodX - 13, 0, rodX + 13, 0);
     rodGradient.addColorStop(0, '#233943');
     rodGradient.addColorStop(0.48, '#8ca1a9');
     rodGradient.addColorStop(1, '#1b3039');
     context.fillStyle = rodGradient;
-    context.fillRect(rodX - 12, CORE.y - 28, 24, rodDepth + 28);
+    context.fillRect(rodX - 12, rodTop, 24, rodDepth + 28);
     context.strokeStyle = '#a3b7be';
     context.lineWidth = 1;
-    context.strokeRect(rodX - 12, CORE.y - 28, 24, rodDepth + 28);
+    context.strokeRect(rodX - 12, rodTop, 24, rodDepth + 28);
+
+    context.save();
+    context.beginPath();
+    context.rect(rodX - 11, housingBottom, 22, Math.max(0, rodBottom - housingBottom));
+    context.clip();
+    const texturePhase = rodDepth % 14;
+    for (let textureY = housingBottom - 14 + texturePhase; textureY < rodBottom + 8; textureY += 14) {
+      context.beginPath();
+      context.moveTo(rodX - 10, textureY + 5);
+      context.lineTo(rodX + 10, textureY);
+      context.strokeStyle = 'rgba(220, 239, 242, .24)';
+      context.lineWidth = 1;
+      context.stroke();
+      context.beginPath();
+      context.moveTo(rodX - 10, textureY + 7);
+      context.lineTo(rodX + 10, textureY + 2);
+      context.strokeStyle = 'rgba(5, 19, 24, .28)';
+      context.stroke();
+    }
+    context.restore();
 
     const gripY = CORE.y + rodDepth;
     context.fillStyle = 'rgba(62, 228, 225, .2)';
