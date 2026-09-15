@@ -11,7 +11,7 @@ export type Telemetry = {
   spentNuclei: number;
 };
 
-export const TOTAL_NUCLEI = 4800;
+export const TOTAL_NUCLEI = 4830;
 
 type ParticleBuffer = {
   count: number;
