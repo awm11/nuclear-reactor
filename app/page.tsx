@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
-  Atom,
   ChevronDown,
   CircleHelp,
   Gauge,
@@ -186,7 +185,12 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-mark"><Atom size={21} /></div>
+        <div className="brand-mark">
+          <span
+            aria-hidden="true"
+            style={{ width: '100%', height: '100%', display: 'block', borderRadius: '12px 7px 12px 7px', background: "center / cover url('favicon.svg')" }}
+          />
+        </div>
         <div className="brand-copy">
           <p className="eyebrow">Interactive science playground</p>
           <h1>Chain Reaction <span>Lab</span></h1>
