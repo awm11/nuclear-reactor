@@ -257,6 +257,7 @@ export function ReactorSimulation({
   const rodsCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomPixelRatioRef = useRef(2);
   const zoomPointerRef = useRef<{ x: number; y: number } | null>(null);
   const flashesRef = useRef<Flash[]>([]);
   const rodsRef = useRef(rods);
@@ -353,8 +354,10 @@ export function ReactorSimulation({
       rodsCanvas.height = height;
       canvas.width = width;
       canvas.height = height;
-      zoomCanvas.width = width;
-      zoomCanvas.height = height;
+      const zoomPixelRatio = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+      zoomPixelRatioRef.current = zoomPixelRatio;
+      zoomCanvas.width = Math.round(width * zoomPixelRatio);
+      zoomCanvas.height = Math.round(height * zoomPixelRatio);
       staticCanvasNeedsRedrawRef.current = true;
       rodsCanvasNeedsRedrawRef.current = true;
     };
@@ -575,17 +578,21 @@ export function ReactorSimulation({
       if (!zoomCanvas) return;
       const context = zoomCanvas.getContext('2d');
       if (!context) return;
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+      const pixelRatio = zoomPixelRatioRef.current;
+      const outputWidth = zoomCanvas.width / pixelRatio;
+      const outputHeight = zoomCanvas.height / pixelRatio;
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.clearRect(0, 0, outputWidth, outputHeight);
 
       const pointer = zoomPointerRef.current;
       if (!zoomEnabledRef.current || !pointer) return;
 
-      const scaleX = zoomCanvas.width / WIDTH;
-      const scaleY = zoomCanvas.height / HEIGHT;
+      const scaleX = outputWidth / WIDTH;
+      const scaleY = outputHeight / HEIGHT;
       const lensX = pointer.x * scaleX;
       const lensY = pointer.y * scaleY;
-      const radius = Math.max(72, Math.min(104, zoomCanvas.width * 0.085));
+      const baseRadius = Math.max(72, Math.min(104, outputWidth * 0.085));
+      const radius = baseRadius * Math.sqrt(1.3);
       const logicalRadius = radius / (Math.min(scaleX, scaleY) * 5);
 
       context.save();
@@ -599,7 +606,13 @@ export function ReactorSimulation({
       context.translate(-lensX, -lensY);
       context.scale(scaleX, scaleY);
       context.drawImage(ensureBaseLayer(), 0, 0);
-      context.drawImage(ensureNucleiLayer(), 0, 0);
+      const visibleNucleusRadiusSquared = (logicalRadius + 8) ** 2;
+      NUCLEI.forEach((nucleus, index) => {
+        const distanceSquared = (nucleus.x - pointer.x) ** 2 + (nucleus.y - pointer.y) ** 2;
+        if (distanceSquared > visibleNucleusRadiusSquared) return;
+        if (spentNuclei[index] === NUCLEUS_DAUGHTER) drawFissionProducts(context, nucleus, index);
+        else drawNucleus(context, nucleus, index);
+      });
       drawRodBank(context, rodsRef.current[0]);
       drawFuelAssemblySelection(
         context,
