@@ -187,6 +187,33 @@ export default function Home() {
       </header>
 
       <section className="workspace">
+        <aside className="readout-column">
+          <section className="panel metrics-panel">
+            <p className="eyebrow">Numbers with consequences</p>
+            <div className="metric-grid">
+              <Metric icon={<Zap size={16} />} label="Thermal power" value={power.toFixed(0)} unit="MW" accent="amber" />
+              <Metric icon={<Activity size={16} />} label="Free neutrons" value={String(telemetry.neutrons)} unit="n" accent="cyan" />
+              <Metric icon={<Gauge size={16} />} label="Energy made" value={telemetry.energyGJ.toFixed(2)} unit="GJ" accent="green" />
+              <ThermometerReadout temperature={coreTemp} warning={temperatureWarning} overheating={overheating} />
+            </div>
+            <div className="fuel-readout">
+              <div><span>U-235 nuclei remaining</span><strong>{telemetry.activeNuclei} / {TOTAL_NUCLEI}</strong></div>
+              <span className="fuel-track"><i style={{ width: `${(telemetry.activeNuclei / TOTAL_NUCLEI) * 100}%` }} /></span>
+              <small>{telemetry.spentNuclei} transformed into daughter products</small>
+            </div>
+          </section>
+
+          <section className="panel readout-panel">
+            <div className="readout-header"><span>POWER HISTORY</span><strong>{Math.round((power / 1600) * 100)}%</strong></div>
+            <PowerHistory values={history} />
+            <div className="readout-scale"><span>30s ago</span><span>now</span></div>
+            <div className="chain-note">
+              <span className="chain-icon">3n</span>
+              <p><strong>The chain is the engine.</strong> Each gold flash consumes one U-235 nucleus and releases exactly 2 or 3 neutrons. The purple and green fragments are different daughter elements, so they cannot fission again.</p>
+            </div>
+          </section>
+        </aside>
+
         <div className="reactor-panel panel">
           <div className="panel-heading">
             <div>
@@ -305,30 +332,6 @@ export default function Home() {
             </label>
           </section>
 
-          <section className="panel metrics-panel">
-            <p className="eyebrow">Numbers with consequences</p>
-            <div className="metric-grid">
-              <Metric icon={<Zap size={16} />} label="Thermal power" value={power.toFixed(0)} unit="MW" accent="amber" />
-              <Metric icon={<Activity size={16} />} label="Free neutrons" value={String(telemetry.neutrons)} unit="n" accent="cyan" />
-              <Metric icon={<Gauge size={16} />} label="Energy made" value={telemetry.energyGJ.toFixed(2)} unit="GJ" accent="green" />
-              <ThermometerReadout temperature={coreTemp} warning={temperatureWarning} overheating={overheating} />
-            </div>
-            <div className="fuel-readout">
-              <div><span>U-235 nuclei remaining</span><strong>{telemetry.activeNuclei} / {TOTAL_NUCLEI}</strong></div>
-              <span className="fuel-track"><i style={{ width: `${(telemetry.activeNuclei / TOTAL_NUCLEI) * 100}%` }} /></span>
-              <small>{telemetry.spentNuclei} transformed into daughter products</small>
-            </div>
-          </section>
-
-          <section className="panel readout-panel">
-            <div className="readout-header"><span>POWER HISTORY</span><strong>{Math.round((power / 1600) * 100)}%</strong></div>
-            <PowerHistory values={history} />
-            <div className="readout-scale"><span>30s ago</span><span>now</span></div>
-            <div className="chain-note">
-              <span className="chain-icon">3n</span>
-              <p><strong>The chain is the engine.</strong> Each gold flash consumes one U-235 nucleus and releases exactly 2 or 3 neutrons. The purple and green fragments are different daughter elements, so they cannot fission again.</p>
-            </div>
-          </section>
         </aside>
       </section>
 
