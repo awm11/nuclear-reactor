@@ -265,11 +265,6 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="transport-strip">
-            <div><span>Primary loop</span><strong>15.5 MPa</strong></div>
-            <div className="pipe-flow"><span /><span /><span /><span /><span /></div>
-            <div><span>Coolant flow</span><strong>17,420 kg/s</strong></div>
-          </div>
         </div>
 
         <aside className="control-column">
