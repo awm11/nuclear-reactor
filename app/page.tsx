@@ -26,6 +26,7 @@ import './advanced-settings.css';
 import './favicon-link.css';
 import './layout-alignment.css';
 import './support-button.css';
+import './zoom-button.css';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
 const DEFAULT_ROD_ABSORPTION = 90;

@@ -1,0 +1,28 @@
+.zoom-button {
+  color: #062026;
+  border-color: rgba(150, 255, 250, 0.78);
+  background: linear-gradient(135deg, #6ff8ee, #25cde9);
+  box-shadow: 2px 3px 0 #17687c, 0 0 12px rgba(37, 205, 233, 0.2);
+}
+
+.zoom-button:hover {
+  border-color: #bafffb;
+  background: linear-gradient(135deg, #8afff7, #3edcf3);
+}
+
+.zoom-button.active {
+  color: #f5f2ff;
+  border-color: #b9b3ff;
+  background: linear-gradient(135deg, #788cff, #7653dd 58%, #5434b8);
+  box-shadow: 2px 3px 0 #332574, 0 0 0 2px rgba(137, 124, 255, 0.14), 0 0 18px rgba(118, 83, 221, 0.45);
+}
+
+.zoom-button.active:hover {
+  border-color: #d5d0ff;
+  background: linear-gradient(135deg, #8d9dff, #8564e8 58%, #6242c7);
+}
+
+.zoom-button:focus-visible {
+  outline: 2px solid #f3fbff;
+  outline-offset: 2px;
+}
