@@ -69,6 +69,7 @@ button { color: inherit; }
 .reactor-canvas-stack { position: relative; width: 100%; aspect-ratio: 1000 / 860; }
 .reactor-canvas-layer { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .reactor-canvas { touch-action: none; user-select: none; }
+.zoom-canvas-layer { z-index: 5; pointer-events: none; }
 .drag-hint { position: absolute; right: 22px; bottom: 18px; color: #6db9c5; font: 600 9px var(--font-geist-mono), monospace; letter-spacing: .04em; }
 .chain-ribbon { position: absolute; z-index: 3; top: 35px; left: 50%; display: flex; align-items: center; gap: 7px; transform: translateX(-50%) rotate(-.6deg); padding: 5px 10px; border: 1px solid rgba(255,189,67,.35); border-radius: 999px; color: #ffe095; background: rgba(63,42,11,.72); font: 800 8px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
 .chain-ribbon b { color: var(--cyan); }
@@ -144,11 +145,12 @@ input[type='range'] { width: 100%; margin: 18px 0 6px; accent-color: var(--cyan)
 .fuel-replacement-control span { color: #ffe09a; font: 800 9px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .06em; }
 .fuel-replacement-control small { color: #77939c; font: 7px var(--font-geist-mono), monospace; }
 .fuel-replacement-control button { min-height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid rgba(126,255,207,.34); border-radius: 8px; color: #073036; background: linear-gradient(135deg, #95f3ca, #48dcca); font: 900 8px var(--font-geist-mono), monospace; text-transform: uppercase; white-space: nowrap; box-shadow: 2px 3px 0 rgba(16,85,86,.72); }
-.control-buttons { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 12px; }
+.control-buttons { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; margin-top: 12px; }
 button { border: 0; cursor: pointer; transition: transform .2s, border-color .2s, background .2s; }
 button:hover { transform: translateY(-1px); }
 .primary-button { min-height: 44px; border-radius: 11px 7px 11px 7px; display: flex; gap: 8px; align-items: center; justify-content: center; color: #062026; background: linear-gradient(135deg, #6ff8ee, #25cde9); font-size: 11px; font-weight: 900; box-shadow: 3px 4px 0 #17687c; }
 .icon-button { width: 42px; height: 42px; display: grid; place-items: center; color: #9db4bd; border: 1px solid rgba(151,208,224,.15); border-radius: 10px; background: rgba(8,27,35,.8); }
+.zoom-button.active { color: #061b21; border-color: #96fffa; background: var(--cyan); box-shadow: 0 0 0 2px rgba(62,228,225,.12), 0 0 16px rgba(62,228,225,.34); }
 .safety-status { width: 100%; min-height: 48px; margin-top: 14px; display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid rgba(151,208,224,.18); border-radius: 10px 7px 10px 7px; background: rgba(4,16,22,.68); box-shadow: inset 0 1px rgba(255,255,255,.035); }
 .safety-lamp { position: relative; width: 23px; height: 23px; margin-left: 3px; border: 3px solid #6e7c80; border-radius: 50%; background: #6bdf9a; box-shadow: 0 0 0 2px #18252a, inset 0 2px 3px rgba(255,255,255,.65), inset 0 -3px 5px rgba(0,0,0,.38), 0 0 13px rgba(107,223,154,.55); }
 .safety-lamp::after { content: ''; position: absolute; top: 3px; left: 4px; width: 6px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.55); transform: rotate(-25deg); }

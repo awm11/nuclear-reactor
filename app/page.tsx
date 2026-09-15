@@ -12,6 +12,7 @@ import {
   Play,
   RefreshCw,
   RotateCcw,
+  Search,
   ShieldAlert,
   Sparkles,
   Thermometer,
@@ -37,6 +38,7 @@ export default function Home() {
   const [rods, setRods] = useState(DEFAULT_RODS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
+  const [zoomEnabled, setZoomEnabled] = useState(false);
   const [scramming, setScramming] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [rodAbsorption, setRodAbsorption] = useState(DEFAULT_ROD_ABSORPTION);
@@ -164,6 +166,12 @@ export default function Home() {
       if (event.key.toLowerCase() === 'r') {
         event.preventDefault();
         replaceSelectedFuelRod();
+        return;
+      }
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        setZoomEnabled((value) => !value);
+        return;
       }
       if (event.key.toLowerCase() === 's') scram();
     };
@@ -235,6 +243,7 @@ export default function Home() {
               rods={rods}
               running={running}
               speed={speed}
+              zoomEnabled={zoomEnabled}
               rodAbsorption={rodAbsorption}
               nucleusInteractionRadius={nucleusInteractionRadius}
               selectedFuelAssembly={selectedFuelRod}
@@ -246,7 +255,7 @@ export default function Home() {
               onFuelAssemblySelect={setSelectedFuelRod}
               onTelemetry={setTelemetry}
             />
-            <div className="drag-hint">Double-click fuel · arrows: rods / fuel · R: replace</div>
+            <div className="drag-hint">Double-click fuel · Z: 5× inspection loupe · arrows: rods / fuel · R: replace</div>
             <div className="stage-legend">
               <span><i className="legend-neutron" /> Neutron</span>
               <span><i className="legend-nucleus" /> U-235 nucleus</span>
@@ -267,7 +276,7 @@ export default function Home() {
           <section className="panel control-panel">
             <div className="panel-heading compact">
               <div><p className="eyebrow">Operator controls</p><h2>Your levers</h2></div>
-              <span className="shortcut-help" title="Space: play/pause · ↑↓: rods · ←→: select fuel · R: replace · S: SCRAM"><CircleHelp size={16} /></span>
+              <span className="shortcut-help" title="Space: play/pause · Z: inspection loupe · ↑↓: rods · ←→: select fuel · R: replace · S: SCRAM"><CircleHelp size={16} /></span>
             </div>
             <RodThrottle value={averageRod} rods={rods} onChange={setRodBank}>
               <div className={`safety-status ${overheating ? 'danger' : temperatureWarning ? 'caution' : 'normal'}`} role="status" aria-live="polite">
@@ -308,6 +317,15 @@ export default function Home() {
                 {running ? <Pause size={17} /> : <Play size={17} />}
               </button>
               <button className="icon-button" onClick={reset} aria-label="Reset simulation"><RotateCcw size={17} /></button>
+              <button
+                className={`icon-button zoom-button ${zoomEnabled ? 'active' : ''}`}
+                onClick={() => setZoomEnabled((value) => !value)}
+                aria-label={`${zoomEnabled ? 'Disable' : 'Enable'} 5 times reactor inspection loupe`}
+                aria-pressed={zoomEnabled}
+                title="Toggle 5× inspection loupe (Z)"
+              >
+                <Search size={18} />
+              </button>
             </div>
             <label className="speed-control">
               <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
@@ -350,7 +368,7 @@ export default function Home() {
 
       <footer>
         <span>Educational aggregate model · not for operational use</span>
-        <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · ↑↓: rods · ←→: fuel · R: replace · S: SCRAM</span>
+        <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · Z: zoom · ↑↓: rods · ←→: fuel · R: replace · S: SCRAM</span>
       </footer>
     </main>
   );

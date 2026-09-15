@@ -38,6 +38,7 @@ type Props = {
   rods: number[];
   running: boolean;
   speed: number;
+  zoomEnabled: boolean;
   rodAbsorption: number;
   nucleusInteractionRadius: number;
   selectedFuelAssembly: number | null;
@@ -232,6 +233,7 @@ export function ReactorSimulation({
   rods,
   running,
   speed,
+  zoomEnabled,
   rodAbsorption,
   nucleusInteractionRadius,
   selectedFuelAssembly,
@@ -254,10 +256,13 @@ export function ReactorSimulation({
   const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const rodsCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomPointerRef = useRef<{ x: number; y: number } | null>(null);
   const flashesRef = useRef<Flash[]>([]);
   const rodsRef = useRef(rods);
   const runningRef = useRef(running);
   const speedRef = useRef(speed);
+  const zoomEnabledRef = useRef(zoomEnabled);
   const rodAbsorptionRef = useRef(rodAbsorption);
   const nucleusInteractionRadiusRef = useRef(nucleusInteractionRadius);
   const telemetryCallbackRef = useRef(onTelemetry);
@@ -287,6 +292,10 @@ export function ReactorSimulation({
   }, [rods]);
   useEffect(() => { runningRef.current = running; }, [running]);
   useEffect(() => { speedRef.current = speed; }, [speed]);
+  useEffect(() => {
+    zoomEnabledRef.current = zoomEnabled;
+    if (!zoomEnabled) zoomPointerRef.current = null;
+  }, [zoomEnabled]);
   useEffect(() => { rodAbsorptionRef.current = rodAbsorption; }, [rodAbsorption]);
   useEffect(() => { nucleusInteractionRadiusRef.current = nucleusInteractionRadius; }, [nucleusInteractionRadius]);
   useEffect(() => { telemetryCallbackRef.current = onTelemetry; }, [onTelemetry]);
@@ -332,7 +341,8 @@ export function ReactorSimulation({
     const canvas = canvasRef.current;
     const staticCanvas = staticCanvasRef.current;
     const rodsCanvas = rodsCanvasRef.current;
-    if (!canvas || !staticCanvas || !rodsCanvas) return;
+    const zoomCanvas = zoomCanvasRef.current;
+    if (!canvas || !staticCanvas || !rodsCanvas || !zoomCanvas) return;
     const updateSize = () => {
       const bounds = canvas.getBoundingClientRect();
       const width = Math.max(1, Math.round(bounds.width));
@@ -343,6 +353,8 @@ export function ReactorSimulation({
       rodsCanvas.height = height;
       canvas.width = width;
       canvas.height = height;
+      zoomCanvas.width = width;
+      zoomCanvas.height = height;
       staticCanvasNeedsRedrawRef.current = true;
       rodsCanvasNeedsRedrawRef.current = true;
     };
@@ -555,6 +567,84 @@ export function ReactorSimulation({
       flashes.length = writeIndex;
     };
 
+    const drawZoomLens = (
+      now: number,
+      replacementOverlay: { assemblyIndex: number; progress: number } | null,
+    ) => {
+      const zoomCanvas = zoomCanvasRef.current;
+      if (!zoomCanvas) return;
+      const context = zoomCanvas.getContext('2d');
+      if (!context) return;
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+
+      const pointer = zoomPointerRef.current;
+      if (!zoomEnabledRef.current || !pointer) return;
+
+      const scaleX = zoomCanvas.width / WIDTH;
+      const scaleY = zoomCanvas.height / HEIGHT;
+      const lensX = pointer.x * scaleX;
+      const lensY = pointer.y * scaleY;
+      const radius = Math.max(72, Math.min(104, zoomCanvas.width * 0.085));
+      const logicalRadius = radius / (Math.min(scaleX, scaleY) * 5);
+
+      context.save();
+      context.beginPath();
+      context.arc(lensX, lensY, radius, 0, Math.PI * 2);
+      context.clip();
+      context.fillStyle = '#06151d';
+      context.fillRect(lensX - radius, lensY - radius, radius * 2, radius * 2);
+      context.translate(lensX, lensY);
+      context.scale(5, 5);
+      context.translate(-lensX, -lensY);
+      context.scale(scaleX, scaleY);
+      context.drawImage(ensureBaseLayer(), 0, 0);
+      context.drawImage(ensureNucleiLayer(), 0, 0);
+      drawRodBank(context, rodsRef.current[0]);
+      drawFuelAssemblySelection(
+        context,
+        selectedFuelAssemblyRef.current,
+        replacementOverlay,
+        spentByAssembly,
+        now,
+      );
+      drawMagnifiedDynamics(
+        context,
+        particleBuffers.active,
+        flashesRef.current,
+        pointer.x,
+        pointer.y,
+        logicalRadius,
+      );
+      context.restore();
+
+      context.save();
+      context.shadowColor = 'rgba(62, 228, 225, .68)';
+      context.shadowBlur = 18;
+      context.strokeStyle = '#071219';
+      context.lineWidth = 8;
+      context.beginPath();
+      context.arc(lensX, lensY, radius, 0, Math.PI * 2);
+      context.stroke();
+      context.shadowBlur = 0;
+      context.strokeStyle = '#70f3ef';
+      context.lineWidth = 2;
+      context.stroke();
+      context.fillStyle = 'rgba(5, 19, 27, .9)';
+      context.beginPath();
+      context.arc(lensX + radius * 0.61, lensY - radius * 0.61, 17, 0, Math.PI * 2);
+      context.fill();
+      context.strokeStyle = '#70f3ef';
+      context.lineWidth = 1.5;
+      context.stroke();
+      context.fillStyle = '#dffeff';
+      context.font = '900 10px monospace';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('5×', lensX + radius * 0.61, lensY - radius * 0.61 + 0.5);
+      context.restore();
+    };
+
     const draw = (target: HTMLCanvasElement, now: number) => {
       const staticCanvas = staticCanvasRef.current;
       const rodsCanvas = rodsCanvasRef.current;
@@ -621,6 +711,10 @@ export function ReactorSimulation({
         context.clearRect(0, 0, WIDTH, HEIGHT);
         drawDynamicCore(context, particleBuffers.active, flashesRef.current);
       }
+      drawZoomLens(
+        now,
+        replacement ? { assemblyIndex: replacement.assemblyIndex, progress: replacementProgress ?? 0 } : null,
+      );
     };
 
     frame = requestAnimationFrame(animate);
@@ -657,8 +751,8 @@ export function ReactorSimulation({
       <canvas ref={rodsCanvasRef} className="reactor-canvas-layer" aria-hidden="true" />
       <canvas
         ref={canvasRef}
-        className="reactor-canvas reactor-canvas-layer"
-        aria-label="Interactive reactor core. Double-click a fuel rod to select it for replacement. Drag any cyan control rod grip vertically to move the whole control-rod bank."
+        className={`reactor-canvas reactor-canvas-layer ${zoomEnabled ? 'zoom-active' : ''}`}
+        aria-label="Interactive reactor core. Double-click a fuel rod to select it for replacement. Drag any cyan control rod grip vertically to move the whole control-rod bank. Press Z to toggle the five times inspection loupe."
         onClick={(event) => {
           const point = pointerPosition(event);
           if (fuelAssemblyAtPoint(point.x, point.y) === -1 && !isNearRodBank(point.x, point.y)) {
@@ -678,21 +772,28 @@ export function ReactorSimulation({
           updateBankFromPointer(event);
         }}
         onPointerMove={(event) => {
+          const point = pointerPosition(event);
+          zoomPointerRef.current = zoomEnabledRef.current ? point : null;
           if (draggingRef.current) {
             updateBankFromPointer(event);
             return;
           }
-          const point = pointerPosition(event);
           event.currentTarget.style.cursor = isNearRodBank(point.x, point.y)
             ? 'ns-resize'
-            : fuelAssemblyAtPoint(point.x, point.y) !== -1 ? 'pointer' : 'default';
+            : zoomEnabledRef.current ? 'zoom-in'
+              : fuelAssemblyAtPoint(point.x, point.y) !== -1 ? 'pointer' : 'default';
         }}
+        onPointerLeave={() => { zoomPointerRef.current = null; }}
         onPointerUp={(event) => {
           draggingRef.current = false;
           if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
         }}
-        onPointerCancel={() => { draggingRef.current = false; }}
+        onPointerCancel={() => {
+          draggingRef.current = false;
+          zoomPointerRef.current = null;
+        }}
       />
+      <canvas ref={zoomCanvasRef} className="reactor-canvas-layer zoom-canvas-layer" aria-hidden="true" />
     </div>
   );
 }
@@ -1099,6 +1200,47 @@ function drawDynamicCore(context: CanvasRenderingContext2D, particles: ParticleB
     context.fillText('⚠ NEUTRON FLUX SURGE', WIDTH / 2, CORE.y + CORE.height - 36);
   }
 
+  context.restore();
+}
+
+function drawMagnifiedDynamics(
+  context: CanvasRenderingContext2D,
+  particles: ParticleBuffer,
+  flashes: Flash[],
+  centreX: number,
+  centreY: number,
+  radius: number,
+) {
+  const renderStride = Math.max(1, Math.ceil(particles.count / MAX_RENDERED_NEUTRONS));
+  const radiusSquared = (radius + 4) ** 2;
+  const isVisible = (x: number, y: number) => (x - centreX) ** 2 + (y - centreY) ** 2 <= radiusSquared;
+
+  context.save();
+  context.lineCap = 'round';
+  context.beginPath();
+  for (let index = 0; index < particles.count; index += renderStride) {
+    if (!isVisible(particles.x[index], particles.y[index])) continue;
+    context.moveTo(particles.x[index] - particles.trailX[index], particles.y[index] - particles.trailY[index]);
+    context.lineTo(particles.x[index], particles.y[index]);
+  }
+  context.strokeStyle = 'rgba(127, 236, 249, .5)';
+  context.lineWidth = 1.1;
+  context.stroke();
+
+  for (let index = 0; index < particles.count; index += renderStride) {
+    if (!isVisible(particles.x[index], particles.y[index])) continue;
+    context.beginPath();
+    context.arc(particles.x[index], particles.y[index], 3.7, 0, Math.PI * 2);
+    context.fillStyle = 'rgba(105, 231, 244, .16)';
+    context.fill();
+    context.beginPath();
+    context.arc(particles.x[index], particles.y[index], 1.25, 0, Math.PI * 2);
+    context.fillStyle = '#efffff';
+    context.fill();
+  }
+
+  const nearbyFlashes = flashes.filter((flash) => isVisible(flash.x, flash.y));
+  drawFlashes(context, nearbyFlashes);
   context.restore();
 }
 
