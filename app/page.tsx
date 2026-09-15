@@ -278,7 +278,7 @@ export default function Home() {
               <div><p className="eyebrow">Operator controls</p><h2>Your levers</h2></div>
               <span className="shortcut-help" title="Space: play/pause · Z: inspection loupe · ↑↓: rods · ←→: select fuel · R: replace · S: SCRAM"><CircleHelp size={16} /></span>
             </div>
-            <RodThrottle value={averageRod} rods={rods} onChange={setRodBank}>
+            <RodThrottle value={averageRod} onChange={setRodBank}>
               <div className={`safety-status ${overheating ? 'danger' : temperatureWarning ? 'caution' : 'normal'}`} role="status" aria-live="polite">
                 <span className="safety-lamp" aria-hidden="true" />
                 <span className="safety-status-copy">
@@ -410,7 +410,7 @@ function BuyMeACoffee() {
   );
 }
 
-function RodThrottle({ value, rods, onChange, children }: { value: number; rods: number[]; onChange: (value: number) => void; children: React.ReactNode }) {
+function RodThrottle({ value, onChange, children }: { value: number; onChange: (value: number) => void; children: React.ReactNode }) {
   const pointerState = useRef<{ startY: number; grabOffsetY: number; moved: boolean } | null>(null);
 
   const pointerValue = (clientY: number, target: HTMLDivElement, offsetY = 0) => {
@@ -474,9 +474,6 @@ function RodThrottle({ value, rods, onChange, children }: { value: number; rods:
         <span className="throttle-instruction">Drag handle</span>
       </div>
       {children}
-      <div className="rod-miniatures" aria-label="Control rod insertion values">
-        {rods.map((rod, index) => <span key={index} style={{ '--rod-fill': `${rod}%` } as React.CSSProperties}>{Math.round(rod)}</span>)}
-      </div>
     </div>
   );
 }

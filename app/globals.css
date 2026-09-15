@@ -129,9 +129,6 @@ button { color: inherit; }
 .throttle-instruction { position: absolute; z-index: 3; bottom: 25px; left: 22px; right: 22px; color: #8aa0a8; text-align: center; font: 700 7px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .1em; pointer-events: none; }
 input[type='range'] { width: 100%; margin: 18px 0 6px; accent-color: var(--cyan); cursor: pointer; }
 .range-labels { color: #58747e; font: 8px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .08em; }
-.rod-miniatures { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 13px; }
-.rod-miniatures span { position: relative; isolation: isolate; overflow: hidden; padding: 5px 0; text-align: center; border: 1px solid rgba(151,208,224,.12); border-radius: 5px; color: #abc0c7; font: 700 8px var(--font-geist-mono), monospace; }
-.rod-miniatures span::before { content: ''; position: absolute; z-index: -1; inset: 0 0 auto; height: var(--rod-fill); background: linear-gradient(#47636c, #243b43); transition: height .18s ease-out; }
 .absorption-control { display: block; margin-top: 10px; padding: 13px 15px; border: 1px solid rgba(62,228,225,.2); border-radius: 8px 13px 8px 13px; background: rgba(5,52,62,.21); }
 .absorption-control input { margin: 14px 0 8px; }
 .absorption-control .control-label strong { font-size: 12px; }
