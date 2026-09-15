@@ -453,7 +453,6 @@ function RodThrottle({ value, onChange, children }: { value: number; onChange: (
               grabOffsetY: event.clientY - handleY,
               moved: false,
             };
-            event.currentTarget.focus();
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {

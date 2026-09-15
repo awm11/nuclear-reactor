@@ -7,10 +7,10 @@
   justify-content: center;
   gap: 9px;
   color: #061219;
-  border: 1px solid #9afff9;
+  border: 1px solid #fff09a;
   border-radius: 11px 7px 11px 7px;
-  background: linear-gradient(135deg, #79f5ee, #3ee4e1 55%, #33c9dd);
-  box-shadow: 3px 4px 0 #17687c, inset 0 1px rgba(255, 255, 255, .55), 0 0 18px rgba(62, 228, 225, .16);
+  background: linear-gradient(135deg, #ffe96b, #ffdd00 55%, #f0b91d);
+  box-shadow: 3px 4px 0 #8c6510, inset 0 1px rgba(255, 255, 255, .65), 0 0 18px rgba(255, 221, 0, .18);
   font-size: 14px;
   font-weight: 850;
   text-decoration: none;
@@ -20,12 +20,12 @@
 .support-button:hover {
   filter: brightness(1.06);
   transform: translateY(-1px);
-  box-shadow: 4px 5px 0 #17687c, inset 0 1px rgba(255, 255, 255, .6), 0 0 24px rgba(62, 228, 225, .26);
+  box-shadow: 4px 5px 0 #8c6510, inset 0 1px rgba(255, 255, 255, .7), 0 0 24px rgba(255, 221, 0, .3);
 }
 
 .support-button:active {
   transform: translateY(3px);
-  box-shadow: 1px 1px 0 #17687c, inset 0 1px rgba(255, 255, 255, .45);
+  box-shadow: 1px 1px 0 #8c6510, inset 0 1px rgba(255, 255, 255, .5);
 }
 
 .support-button:focus-visible {
