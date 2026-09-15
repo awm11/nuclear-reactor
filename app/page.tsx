@@ -470,12 +470,15 @@ function ThermometerReadout({ temperature, warning, overheating }: { temperature
       <div className="thermometer-visual" aria-hidden="true">
         <span className="thermometer-tube"><i style={{ height: `${fill}%` }} /></span>
         <span className="thermometer-bulb" />
-        <span className="temperature-warning-line">380</span>
+        <span className="temperature-warning-line" />
       </div>
       <div className="thermometer-copy">
         <span><Thermometer size={17} /> Core temperature</span>
         <strong>{temperature.toFixed(0)}<small>°C</small></strong>
-        <em>{overheating ? 'Critical heat — SCRAM now' : warning ? 'Temperature warning — prepare to SCRAM' : 'Normal operating range'}</em>
+        <div className="thermometer-state">
+          <em>{overheating ? 'SCRAM now' : warning ? 'Temperature warning' : 'Normal range'}</em>
+          <small>SCRAM at 380°C</small>
+        </div>
       </div>
     </div>
   );

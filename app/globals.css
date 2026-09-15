@@ -175,23 +175,24 @@ button:hover { transform: translateY(-1px); }
 .metric-card.amber .metric-label svg { color: var(--amber); }.metric-card.cyan .metric-label svg { color: var(--cyan); }.metric-card.red .metric-label svg { color: var(--red); }.metric-card.green .metric-label svg { color: var(--green); }
 .metric-card.green { grid-column: 1 / -1; min-height: 70px; }
 .metric-card.green .metric-value { margin-top: 8px; }
-.thermometer-card { grid-column: 1 / -1; min-height: 132px; display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 16px; padding: 13px 16px; overflow: hidden; border: 1px solid rgba(255,107,99,.14); border-radius: 12px; background: linear-gradient(135deg, rgba(255,107,99,.07), rgba(5,18,24,.62)); }
-.thermometer-visual { position: relative; width: 42px; height: 101px; margin-left: 4px; }
+.thermometer-card { grid-column: 1 / -1; min-height: 128px; display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 12px; padding: 13px 14px; overflow: hidden; border: 1px solid rgba(255,107,99,.14); border-radius: 12px; background: linear-gradient(135deg, rgba(255,107,99,.07), rgba(5,18,24,.62)); }
+.thermometer-visual { position: relative; width: 42px; height: 101px; }
 .thermometer-tube { position: absolute; left: 14px; bottom: 21px; width: 14px; height: 76px; overflow: hidden; border: 3px solid #d9edf0; border-bottom: 0; border-radius: 10px 10px 2px 2px; background: #102832; }
 .thermometer-tube::after { content: ''; position: absolute; inset: 9px 2px auto; height: 1px; background: rgba(255,255,255,.4); box-shadow: 0 13px rgba(255,255,255,.25), 0 26px rgba(255,255,255,.2), 0 39px rgba(255,255,255,.15); }
 .thermometer-tube i { position: absolute; inset: auto 2px 0; min-height: 6px; border-radius: 7px 7px 0 0; background: linear-gradient(#ffb642, #ff5148); box-shadow: 0 0 11px rgba(255,85,68,.8); transition: height .3s ease-out; }
 .thermometer-bulb { position: absolute; left: 5px; bottom: 0; width: 32px; height: 32px; border: 3px solid #d9edf0; border-radius: 50%; background: radial-gradient(circle at 42% 38%, #ffbd43 0 14%, #ff5549 40% 100%); box-shadow: 0 0 14px rgba(255,85,68,.42); }
-.temperature-warning-line { position: absolute; top: 18px; left: 31px; padding-left: 13px; color: #ff8b83; font: 700 7px var(--font-geist-mono), monospace; }
-.temperature-warning-line::before { content: ''; position: absolute; top: 4px; left: -11px; width: 21px; height: 1px; background: #ff6b63; }
-.thermometer-copy { display: flex; flex-direction: column; align-items: flex-start; }
-.thermometer-copy > span { display: flex; align-items: center; gap: 7px; color: #e2a7a2; font-size: 10px; }
-.thermometer-copy strong { margin-top: 6px; font: 700 34px var(--font-geist-mono), monospace; letter-spacing: -.07em; }
+.temperature-warning-line { position: absolute; z-index: 2; top: 18px; left: 11px; width: 24px; height: 2px; border-radius: 2px; background: #ff6b63; box-shadow: 0 0 7px rgba(255,107,99,.62); }
+.thermometer-copy { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.thermometer-copy > span { display: flex; align-items: center; gap: 6px; color: #e2a7a2; font-size: 9px; white-space: nowrap; }
+.thermometer-copy strong { margin-top: 7px; font: 700 30px/1 var(--font-geist-mono), monospace; letter-spacing: -.07em; white-space: nowrap; }
 .thermometer-copy strong small { margin-left: 5px; color: #c28782; font-size: 13px; letter-spacing: 0; }
-.thermometer-copy em { color: #7f999f; font: normal 8px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .06em; }
+.thermometer-state { width: 100%; margin-top: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.thermometer-state em { color: #9bb2b8; font: normal 8px/1.2 var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.thermometer-state small { padding: 3px 5px; border: 1px solid rgba(255,107,99,.24); border-radius: 4px; color: #c88883; background: rgba(255,107,99,.07); font: 700 6px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
 .thermometer-card.hot { border-color: rgba(255,81,72,.55); background: linear-gradient(135deg, rgba(255,67,58,.2), rgba(60,15,18,.55)); box-shadow: inset 0 0 30px rgba(255,67,58,.08); }
 .thermometer-card.warning:not(.hot) { border-color: rgba(255,189,67,.46); background: linear-gradient(135deg, rgba(255,189,67,.16), rgba(50,35,9,.5)); box-shadow: inset 0 0 26px rgba(255,189,67,.07); }
-.thermometer-card.warning:not(.hot) .thermometer-copy em { color: #ffd26d; font-weight: 800; }
-.thermometer-card.hot .thermometer-copy em { color: #ff938c; font-weight: 800; }
+.thermometer-card.warning:not(.hot) .thermometer-state em { color: #ffd26d; font-weight: 800; }
+.thermometer-card.hot .thermometer-state em { color: #ff938c; font-weight: 800; }
 .fuel-readout { margin-top: 10px; padding: 11px 12px; border-radius: 9px; background: rgba(5,18,24,.45); border: 1px solid rgba(151,208,224,.08); }
 .fuel-readout > div { display: flex; justify-content: space-between; color: #78949d; font: 600 9px var(--font-geist-mono), monospace; text-transform: uppercase; }
 .fuel-readout strong { color: #c4d7dc; }
