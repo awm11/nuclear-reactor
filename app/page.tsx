@@ -7,6 +7,7 @@ import {
   Activity,
   ChevronDown,
   CircleHelp,
+  Coffee,
   Gauge,
   Pause,
   Play,
@@ -22,6 +23,7 @@ import {
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import './advanced-settings.css';
+import './support-button.css';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
 const DEFAULT_ROD_ABSORPTION = 90;
@@ -389,37 +391,21 @@ export default function Home() {
 }
 
 function BuyMeACoffee() {
-  const buttonSlotRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const slot = buttonSlotRef.current;
-    if (!slot) return;
-
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js';
-    script.async = true;
-    script.dataset.name = 'bmc-button';
-    script.dataset.slug = 'awmPhysics';
-    script.dataset.color = '#3EE4E1';
-    script.dataset.emoji = '';
-    script.dataset.font = 'Lato';
-    script.dataset.text = 'Buy me a coffee';
-    script.dataset.outlineColor = '#17687C';
-    script.dataset.fontColor = '#061219';
-    script.dataset.coffeeColor = '#FFFFFF';
-    slot.appendChild(script);
-
-    return () => { slot.replaceChildren(); };
-  }, []);
-
   return (
     <aside className="support-strip" aria-label="Support AWM Physics">
       <div>
         <p className="eyebrow">Keep the experiments running</p>
         <strong>Enjoyed the simulator? Support more interactive physics.</strong>
       </div>
-      <div className="bmc-slot" ref={buttonSlotRef} />
+      <a
+        className="support-button"
+        href="https://www.buymeacoffee.com/awmPhysics"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Coffee size={18} aria-hidden="true" />
+        <span>Buy me a coffee</span>
+      </a>
     </aside>
   );
 }
