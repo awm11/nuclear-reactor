@@ -1,0 +1,21 @@
+.brand-mark {
+  flex: 0 0 auto;
+  text-decoration: none;
+  transform-origin: center;
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+.brand-mark:hover {
+  filter: brightness(1.07);
+  transform: rotate(3deg) scale(1.08);
+  box-shadow: 5px 6px 0 #2c3d7e, 0 0 30px rgba(62, 228, 225, .32);
+}
+
+.brand-mark:active {
+  transform: rotate(1deg) scale(1.03);
+}
+
+.brand-mark:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 5px;
+}

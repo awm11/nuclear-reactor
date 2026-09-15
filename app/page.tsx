@@ -23,6 +23,7 @@ import {
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import './advanced-settings.css';
+import './favicon-link.css';
 import './layout-alignment.css';
 import './support-button.css';
 
@@ -188,12 +189,18 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="brand-mark">
+        <a
+          className="brand-mark"
+          href="http://awm11.github.io/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open the AWM Physics homepage in a new tab"
+        >
           <span
             aria-hidden="true"
             style={{ width: '100%', height: '100%', display: 'block', borderRadius: '12px 7px 12px 7px', background: "center / cover url('favicon.svg')" }}
           />
-        </div>
+        </a>
         <div className="brand-copy">
           <p className="eyebrow">Interactive science playground</p>
           <h1>Chain Reaction <span>Lab</span></h1>
