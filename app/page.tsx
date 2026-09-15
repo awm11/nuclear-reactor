@@ -20,7 +20,8 @@ import {
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
-const DEFAULT_NUCLEUS_INTERACTION_RADIUS = 0.3;
+const DEFAULT_ROD_ABSORPTION = 90;
+const DEFAULT_NUCLEUS_INTERACTION_RADIUS = 0.2;
 const TEMPERATURE_WARNING = 350;
 const SCRAM_TEMPERATURE = 380;
 const EMPTY_TELEMETRY: Telemetry = {
@@ -38,7 +39,7 @@ export default function Home() {
   const [started, setStarted] = useState(false);
   const [scramming, setScramming] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [rodAbsorption, setRodAbsorption] = useState(70);
+  const [rodAbsorption, setRodAbsorption] = useState(DEFAULT_ROD_ABSORPTION);
   const [nucleusInteractionRadius, setNucleusInteractionRadius] = useState(DEFAULT_NUCLEUS_INTERACTION_RADIUS);
   const [pulseVersion, setPulseVersion] = useState(0);
   const [resetVersion, setResetVersion] = useState(0);
@@ -84,7 +85,7 @@ export default function Home() {
     setRunning(false);
     setStarted(false);
     setScramming(false);
-    setRodAbsorption(70);
+    setRodAbsorption(DEFAULT_ROD_ABSORPTION);
     setNucleusInteractionRadius(DEFAULT_NUCLEUS_INTERACTION_RADIUS);
     setSelectedFuelRod(null);
     setReplacementFuelRod(null);
