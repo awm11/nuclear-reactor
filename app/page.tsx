@@ -270,11 +270,22 @@ export default function Home() {
               <span className="shortcut-help" title="Space: play/pause · ↑↓: rods · ←→: select fuel · R: replace · S: SCRAM"><CircleHelp size={16} /></span>
             </div>
             <RodThrottle value={averageRod} rods={rods} onChange={setRodBank}>
-              <button className={`scram-button ${temperatureWarning && !overheating ? 'warning' : ''} ${overheating ? 'alarm' : ''} ${scramming ? 'engaged' : ''}`} onClick={scram} aria-live="polite">
+              <div className={`safety-status ${overheating ? 'danger' : temperatureWarning ? 'caution' : 'normal'}`} role="status" aria-live="polite">
+                <span className="safety-lamp" aria-hidden="true" />
+                <span className="safety-status-copy">
+                  <small>Reactor status</small>
+                  <strong>{overheating ? 'SCRAM required' : temperatureWarning ? 'Temperature caution' : 'Normal operation'}</strong>
+                </span>
+              </div>
+              <button
+                className={`scram-button ${overheating ? 'alarm' : ''} ${scramming ? 'engaged' : ''}`}
+                onClick={scram}
+                aria-label={scramming ? 'SCRAM active, control rods lowering' : overheating ? 'SCRAM now, core temperature critical' : 'SCRAM emergency shutdown'}
+              >
                 <span className="scram-cap"><ShieldAlert size={20} /></span>
                 <span className="scram-copy">
                   <strong>SCRAM</strong>
-                  <small>{scramming ? 'Rods lowering now' : overheating ? 'Core overheat — press now' : temperatureWarning ? 'Temperature rising — stand by' : 'Emergency rod insertion'}</small>
+                  <small>{scramming ? 'Rods lowering' : 'Emergency shutdown'}</small>
                 </span>
               </button>
             </RodThrottle>
