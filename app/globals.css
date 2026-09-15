@@ -108,11 +108,11 @@ button { color: inherit; }
 .control-label span { color: #b7cbd2; font-size: 12px; }
 .control-label strong { color: var(--cyan); font: 600 16px var(--font-geist-mono), monospace; }
 .rod-throttle .control-label span { color: #e0edf0; font-size: 15px; font-weight: 850; letter-spacing: -.02em; }
-.throttle-console { position: relative; width: 142px; height: 154px; margin: 10px auto 0; overflow: hidden; border: 1px solid #52656c; border-radius: 18px 18px 9px 9px; background: linear-gradient(90deg, #26343a, #536169 13%, #303e44 24%, #1b272d 50%, #303e44 76%, #536169 87%, #26343a); box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -8px 18px rgba(0,0,0,.45), 0 7px 13px rgba(0,0,0,.24); }
+.throttle-console { position: relative; width: 142px; height: 176px; margin: 10px auto 0; overflow: hidden; border: 1px solid #52656c; border-radius: 18px 18px 9px 9px; background: linear-gradient(90deg, #26343a, #536169 13%, #303e44 24%, #1b272d 50%, #303e44 76%, #536169 87%, #26343a); box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -8px 18px rgba(0,0,0,.45), 0 7px 13px rgba(0,0,0,.24); }
 .throttle-console::before, .throttle-console::after { content: ''; position: absolute; bottom: 9px; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9faeb3, #172229 55%, #05090b); box-shadow: 0 0 0 1px #111b20; }
 .throttle-console::before { left: 10px; }
 .throttle-console::after { right: 10px; }
-.throttle-travel { position: absolute; z-index: 2; inset: 6px 25px 22px; outline: none; cursor: ns-resize; touch-action: none; user-select: none; }
+.throttle-travel { position: absolute; z-index: 2; inset: 6px 25px 45px; outline: none; cursor: ns-resize; touch-action: none; user-select: none; }
 .throttle-travel:focus-visible { border-radius: 12px; box-shadow: 0 0 0 2px var(--cyan), 0 0 15px rgba(62,228,225,.4); }
 .throttle-slot { position: absolute; left: 50%; top: 8%; bottom: 5%; width: 20px; transform: translateX(-50%); border: 1px solid #62737a; border-radius: 11px; background: linear-gradient(90deg, #060a0c, #1a252a 48%, #05080a); box-shadow: inset 5px 0 7px rgba(0,0,0,.7), inset -3px 0 4px rgba(255,255,255,.05); }
 .throttle-handle { position: absolute; left: 50%; width: 90px; height: 44px; transform: translate(-50%, -50%); filter: drop-shadow(0 5px 4px rgba(0,0,0,.55)); pointer-events: none; }
@@ -125,7 +125,7 @@ button { color: inherit; }
 .throttle-pivot { position: absolute; z-index: 2; left: 50%; bottom: 0; width: 24px; height: 13px; transform: translateX(-50%); border: 1px solid #151f24; border-radius: 12px 12px 4px 4px; background: linear-gradient(#68767c, #263238); }
 .throttle-scale { position: absolute; inset: 15px 10px 26px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; color: #a8bbc1; font: 800 7px var(--font-geist-mono), monospace; letter-spacing: .08em; pointer-events: none; }
 .throttle-scale i { width: 9px; height: 1px; margin-left: 2px; background: #71848b; }
-.throttle-instruction { position: absolute; z-index: 3; bottom: 8px; left: 0; right: 0; color: #70878f; text-align: center; font: 700 7px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .1em; pointer-events: none; }
+.throttle-instruction { position: absolute; z-index: 3; bottom: 25px; left: 22px; right: 22px; color: #8aa0a8; text-align: center; font: 700 7px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .1em; pointer-events: none; }
 input[type='range'] { width: 100%; margin: 18px 0 6px; accent-color: var(--cyan); cursor: pointer; }
 .range-labels { color: #58747e; font: 8px var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .08em; }
 .rod-miniatures { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 13px; }
