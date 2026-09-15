@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Atom,
+  ChevronDown,
   CircleHelp,
   Gauge,
   Pause,
@@ -14,11 +15,14 @@ import {
   RotateCcw,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
   Thermometer,
   Zap,
 } from 'lucide-react';
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import './advanced-settings.css';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
 const DEFAULT_ROD_ABSORPTION = 90;
@@ -322,39 +326,54 @@ export default function Home() {
                 <Search size={18} />
               </button>
             </div>
-            <label className="speed-control">
-              <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
-              <input type="range" min="0.4" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
-            </label>
-            <label className="absorption-control">
-              <div className="control-label"><span>Control-rod collision</span><strong>{rodAbsorption}% capture</strong></div>
-              <input
-                aria-label="Probability that a neutron striking a control rod is absorbed"
-                type="range"
-                min="0"
-                max="100"
-                value={rodAbsorption}
-                onChange={(event) => setRodAbsorption(Number(event.target.value))}
-              />
-              <div className="probability-split">
-                <span><i className="capture-swatch" /> Absorbed {rodAbsorption}%</span>
-                <span><i className="pass-swatch" /> Passes behind {100 - rodAbsorption}%</span>
-              </div>
-            </label>
-            <label className="absorption-control">
-              <div className="control-label"><span>Nucleus absorption radius</span><strong>{nucleusInteractionRadius.toFixed(2)} units</strong></div>
-              <input
-                aria-label="Nucleus absorption radius"
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.05"
-                value={nucleusInteractionRadius}
-                onChange={(event) => setNucleusInteractionRadius(Number(event.target.value))}
-              />
-              <div className="range-labels"><span>Harder to hit</span><span>Larger cross-section</span></div>
-            </label>
           </section>
+
+          <Collapsible className="panel advanced-settings">
+            <CollapsibleTrigger className="advanced-settings-trigger">
+              <span className="advanced-settings-title">
+                <SlidersHorizontal size={18} aria-hidden="true" />
+                <span>
+                  <strong>Advanced settings</strong>
+                  <small>Simulation tuning</small>
+                </span>
+              </span>
+              <ChevronDown className="advanced-settings-chevron" size={18} aria-hidden="true" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="advanced-settings-content">
+              <label className="speed-control">
+                <span>Animation speed</span><strong>{speed.toFixed(1)}×</strong>
+                <input type="range" min="0.4" max="2" step="0.1" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
+              </label>
+              <label className="absorption-control">
+                <div className="control-label"><span>Control-rod collision</span><strong>{rodAbsorption}% capture</strong></div>
+                <input
+                  aria-label="Probability that a neutron striking a control rod is absorbed"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={rodAbsorption}
+                  onChange={(event) => setRodAbsorption(Number(event.target.value))}
+                />
+                <div className="probability-split">
+                  <span><i className="capture-swatch" /> Absorbed {rodAbsorption}%</span>
+                  <span><i className="pass-swatch" /> Passes behind {100 - rodAbsorption}%</span>
+                </div>
+              </label>
+              <label className="absorption-control">
+                <div className="control-label"><span>Nucleus absorption radius</span><strong>{nucleusInteractionRadius.toFixed(2)} units</strong></div>
+                <input
+                  aria-label="Nucleus absorption radius"
+                  type="range"
+                  min="0.05"
+                  max="1"
+                  step="0.05"
+                  value={nucleusInteractionRadius}
+                  onChange={(event) => setNucleusInteractionRadius(Number(event.target.value))}
+                />
+                <div className="range-labels"><span>Harder to hit</span><span>Larger cross-section</span></div>
+              </label>
+            </CollapsibleContent>
+          </Collapsible>
 
         </aside>
       </section>
