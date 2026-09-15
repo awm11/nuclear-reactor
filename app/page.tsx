@@ -484,8 +484,8 @@ function RodThrottle({ value, onChange, children }: { value: number; onChange: (
             <b className="throttle-grip"><em /></b>
             <i className="throttle-pivot" />
           </span>
-          <span className="throttle-instruction" style={{ bottom: '7px', fontSize: '7px' }}>Drag handle</span>
         </div>
+        <span className="throttle-instruction" style={{ bottom: '7px', fontSize: '7px' }}>Drag handle</span>
       </div>
       {children}
     </div>
