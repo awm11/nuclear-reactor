@@ -1,0 +1,108 @@
+.control-panel .control-buttons {
+  grid-template-columns: repeat(4, minmax(52px, 1fr));
+  column-gap: 10px;
+  row-gap: 11px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(151, 208, 224, 0.12);
+}
+
+.control-buttons > .primary-button {
+  grid-column: 1 / -1;
+}
+
+.control-buttons > .primary-button + .icon-button {
+  grid-column: 1;
+}
+
+.control-buttons > .icon-button {
+  width: 100%;
+  min-width: 52px;
+}
+
+.control-buttons .information-button {
+  color: #a9c3cc;
+  border-color: rgba(151, 208, 224, 0.22);
+  background: linear-gradient(145deg, rgba(17, 48, 59, 0.96), rgba(6, 25, 33, 0.96));
+  box-shadow: 2px 3px 0 rgba(2, 14, 20, 0.72);
+}
+
+.control-buttons .information-button:hover,
+.control-buttons .information-button[data-popup-open] {
+  color: #07252d;
+  border-color: rgba(150, 255, 250, 0.8);
+  background: linear-gradient(135deg, #78f9ef, #2cd2e8);
+  box-shadow: 2px 3px 0 #17687c, 0 0 14px rgba(44, 210, 232, 0.25);
+}
+
+.control-buttons .information-button:focus-visible {
+  outline: 2px solid #f3fbff;
+  outline-offset: 2px;
+}
+
+.information-popover {
+  width: min(330px, calc(100vw - 24px));
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(111, 248, 238, 0.28);
+  border-radius: 13px 8px 13px 8px;
+  background: linear-gradient(145deg, rgba(13, 40, 50, 0.98), rgba(5, 21, 29, 0.99));
+  box-shadow: 0 18px 45px rgba(0, 8, 13, 0.55), inset 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.information-popover [data-slot='popover-title'] {
+  color: #dffeff;
+  font: 850 12px var(--font-geist-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.information-popover [data-slot='popover-description'] {
+  color: #90abb4;
+  font: 700 9px/1.65 var(--font-geist-mono), monospace;
+}
+
+.information-shortcuts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(151, 208, 224, 0.12);
+}
+
+.information-shortcuts span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #b4c8ce;
+  font: 650 8px/1.35 var(--font-geist-mono), monospace;
+}
+
+.information-shortcuts kbd {
+  min-width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid rgba(111, 248, 238, 0.26);
+  border-radius: 5px;
+  color: #72f1ea;
+  background: rgba(5, 20, 27, 0.86);
+  box-shadow: 0 2px 0 rgba(62, 228, 225, 0.13);
+  font: 850 9px var(--font-geist-mono), monospace;
+}
+
+@media (max-width: 520px) {
+  .control-panel .control-buttons {
+    grid-template-columns: repeat(4, minmax(42px, 1fr));
+  }
+
+  .control-buttons .icon-button {
+    width: 100%;
+    min-width: 42px;
+  }
+
+  .information-shortcuts {
+    grid-template-columns: 1fr;
+  }
+}

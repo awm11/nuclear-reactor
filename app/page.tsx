@@ -9,6 +9,7 @@ import {
   CircleHelp,
   Coffee,
   Gauge,
+  Info,
   Pause,
   Play,
   RefreshCw,
@@ -22,11 +23,15 @@ import {
 } from 'lucide-react';
 import { FUEL_ASSEMBLY_COUNT, ReactorSimulation, TOTAL_NUCLEI, type Telemetry } from '@/components/reactor-simulation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover';
 import './advanced-settings.css';
 import './favicon-link.css';
 import './layout-alignment.css';
+import './information-button.css';
+import './metrics-size.css';
 import './reactor-status.css';
 import './support-button.css';
+import './thermometer-height.css';
 import './zoom-button.css';
 
 const DEFAULT_RODS = [55, 55, 55, 55, 55];
@@ -65,15 +70,11 @@ export default function Home() {
     () => rods.reduce((sum, rod) => sum + rod, 0) / rods.length,
     [rods],
   );
-  const densityFeedback = Math.max(0, telemetry.neutrons - 70) * 0.0012;
-  const effectiveInsertion = averageRod * (rodAbsorption / 100);
-  const kEffective = Math.max(0.48, 1.35 - effectiveInsertion * 0.0065 - densityFeedback);
   const power = telemetry.fissionsPerSecond * 105;
   const powerRef = useRef(power);
   const coreTemp = 286 + power * 0.052;
   const temperatureWarning = coreTemp >= TEMPERATURE_WARNING;
   const overheating = coreTemp >= SCRAM_TEMPERATURE;
-  const state = getReactorState(kEffective, telemetry.neutrons, started);
 
   useEffect(() => {
     powerRef.current = power;
@@ -147,6 +148,7 @@ export default function Home() {
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLButtonElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.code === 'Space') {
         event.preventDefault();
         if (!started) startOrPulse();
@@ -238,16 +240,6 @@ export default function Home() {
         </aside>
 
         <div className="reactor-panel panel">
-          <>
-            <div>
-              <p className="eyebrow">The tiny-particle big-energy machine</p>
-              <h2>Make it critical.</h2>
-            </div>
-            <output className={`criticality-badge ${state.tone}`} aria-live="polite">
-              <span /> {state.label} · k<sub>eff</sub> {kEffective.toFixed(2)}
-            </output>
-          </>
-
           <div className={`core-stage ${temperatureWarning ? 'warning' : ''} ${overheating ? 'overheat' : ''}`}>
             <div className="chamber-label">
               <span>CORE 01 · {TOTAL_NUCLEI} NUCLEI</span>
@@ -270,13 +262,12 @@ export default function Home() {
               onFuelAssemblySelect={setSelectedFuelRod}
               onTelemetry={setTelemetry}
             />
-            <div className="drag-hint">Double-click fuel · Z: 5× inspection loupe · arrows: rods / fuel · R: replace</div>
             <div className="stage-legend">
               <span><i className="legend-neutron" /> Neutron</span>
               <span><i className="legend-nucleus" /> U-235 nucleus</span>
               <span><i className="legend-product" /> Daughter products</span>
               <span><i className="legend-fission" /> Fission</span>
-              <span><i className="legend-rod" /> Absorber rod</span>
+              <span><i className="legend-rod" /> Control rod</span>
             </div>
           </div>
 
@@ -330,12 +321,31 @@ export default function Home() {
               <button
                 className={`icon-button zoom-button ${zoomEnabled ? 'active' : ''}`}
                 onClick={() => setZoomEnabled((value) => !value)}
-                aria-label={`${zoomEnabled ? 'Disable' : 'Enable'} 5 times reactor inspection loupe`}
+                aria-label={`${zoomEnabled ? 'Disable' : 'Enable'} 4 times reactor inspection loupe`}
                 aria-pressed={zoomEnabled}
-                title="Toggle 5× inspection loupe (Z)"
+                title="Toggle 4× inspection loupe (Z)"
               >
                 <Search size={18} />
               </button>
+              <Popover>
+                <PopoverTrigger className="icon-button information-button" aria-label="Open simulation information">
+                  <Info size={19} />
+                </PopoverTrigger>
+                <PopoverContent className="information-popover" side="top" align="end" sideOffset={10}>
+                  <PopoverTitle>How to operate the reactor</PopoverTitle>
+                  <PopoverDescription>
+                    Double-click fuel · Z: 4× inspection loupe · arrows: rods / fuel · R: replace
+                  </PopoverDescription>
+                  <div className="information-shortcuts" aria-label="Simulation keyboard shortcuts">
+                    <span><kbd>Space</kbd> play / pause</span>
+                    <span><kbd>↑</kbd><kbd>↓</kbd> control rods</span>
+                    <span><kbd>←</kbd><kbd>→</kbd> select fuel rod</span>
+                    <span><kbd>R</kbd> replace fuel rod</span>
+                    <span><kbd>Z</kbd> inspection loupe</span>
+                    <span><kbd>S</kbd> SCRAM</span>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </section>
 
@@ -392,7 +402,7 @@ export default function Home() {
       <BuyMeACoffee />
 
       <footer>
-        <span>Educational aggregate model · not for operational use</span>
+        <span>Educational model · not for operational use...duh.</span>
         <span className="footer-ready"><Play size={12} fill="currentColor" /> Space: play/pause · Z: zoom · ↑↓: rods · ←→: fuel · R: replace · S: SCRAM</span>
       </footer>
     </main>
@@ -486,19 +496,19 @@ function RodThrottle({ value, onChange, children }: { value: number; onChange: (
   );
 }
 
-function getReactorState(k: number, neutrons: number, started: boolean) {
-  if (!started || neutrons === 0) return { label: 'Dormant', tone: 'dormant' };
-  if (k < 0.97) return { label: 'Subcritical', tone: 'subcritical' };
-  if (k <= 1.05) return { label: 'Critical', tone: 'critical' };
-  return { label: 'Supercritical', tone: 'supercritical' };
-}
-
 function Metric({ icon, label, value, unit, accent }: { icon: React.ReactNode; label: string; value: string; unit: string; accent: string }) {
-  return <div className={`metric-card ${accent}`}><div className="metric-label">{icon}<span>{label}</span></div><div className="metric-value">{value}<small>{unit}</small></div></div>;
+  const digitCount = value.replace(/\D/g, '').length;
+  const valueSize = digitCount >= 6 ? ' very-compact' : digitCount >= 5 ? ' compact' : digitCount >= 4 ? ' long' : '';
+  return <div className={`metric-card ${accent}`}><div className="metric-label">{icon}<span>{label}</span></div><div className={`metric-value${valueSize}`}><span>{value}</span><small>{unit}</small></div></div>;
 }
 
 function ThermometerReadout({ temperature, warning, overheating }: { temperature: number; warning: boolean; overheating: boolean }) {
-  const fill = Math.max(8, Math.min(100, ((temperature - 280) / 120) * 100));
+  const baselineFill = 100 / 3;
+  const scramFill = 82;
+  const fill = Math.max(
+    baselineFill,
+    Math.min(100, baselineFill + ((temperature - 286) / (SCRAM_TEMPERATURE - 286)) * (scramFill - baselineFill)),
+  );
   return (
     <div className={`thermometer-card ${warning ? 'warning' : ''} ${overheating ? 'hot' : ''}`}>
       <div className="thermometer-visual" aria-hidden="true">

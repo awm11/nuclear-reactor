@@ -1,0 +1,57 @@
+.metric-grid .thermometer-card {
+  box-sizing: border-box;
+  grid-template-columns: 56px minmax(0, 1fr);
+  height: 256px;
+  min-height: 256px;
+  max-height: 256px;
+}
+
+.thermometer-card .thermometer-visual {
+  width: 56px;
+  height: 202px;
+}
+
+.thermometer-card .thermometer-tube {
+  box-sizing: border-box;
+  left: 18px;
+  top: 0;
+  width: 20px;
+  height: 178px;
+  bottom: auto;
+}
+
+.thermometer-card .thermometer-bulb {
+  box-sizing: border-box;
+  left: 4px;
+  width: 48px;
+  height: 48px;
+}
+
+.thermometer-card .temperature-warning-line {
+  top: 32px;
+  left: 12px;
+  width: 32px;
+}
+
+.thermometer-card .thermometer-copy > span {
+  font-size: 18px;
+  white-space: normal;
+}
+
+.thermometer-card .thermometer-copy strong {
+  font-size: 45px;
+}
+
+.thermometer-card .thermometer-copy strong small {
+  font-size: 19.5px;
+}
+
+.thermometer-card .thermometer-state em {
+  font-size: 16.5px;
+  white-space: normal;
+}
+
+.thermometer-card .thermometer-state small {
+  font-size: 13.5px;
+  white-space: normal;
+}

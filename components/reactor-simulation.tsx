@@ -348,8 +348,9 @@ export function ReactorSimulation({
       const bounds = canvas.getBoundingClientRect();
       const width = Math.max(1, Math.round(bounds.width));
       const height = Math.max(1, Math.round(bounds.height));
-      staticCanvas.width = width;
-      staticCanvas.height = height;
+      const staticPixelRatio = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+      staticCanvas.width = Math.round(width * staticPixelRatio);
+      staticCanvas.height = Math.round(height * staticPixelRatio);
       rodsCanvas.width = width;
       rodsCanvas.height = height;
       canvas.width = width;
@@ -384,10 +385,13 @@ export function ReactorSimulation({
       let layer = baseLayerRef.current;
       if (!layer) {
         layer = document.createElement('canvas');
-        layer.width = WIDTH;
-        layer.height = HEIGHT;
+        layer.width = WIDTH * 3;
+        layer.height = HEIGHT * 3;
         const context = layer.getContext('2d');
-        if (context) drawStaticCore(context);
+        if (context) {
+          context.scale(3, 3);
+          drawStaticCore(context);
+        }
         baseLayerRef.current = layer;
       }
       return layer;
@@ -592,8 +596,8 @@ export function ReactorSimulation({
       const lensX = pointer.x * scaleX;
       const lensY = pointer.y * scaleY;
       const baseRadius = Math.max(72, Math.min(104, outputWidth * 0.085));
-      const radius = baseRadius * Math.sqrt(1.3);
-      const logicalRadius = radius / (Math.min(scaleX, scaleY) * 5);
+      const radius = baseRadius * Math.sqrt(1.3) * 1.3;
+      const logicalRadius = radius / (Math.min(scaleX, scaleY) * 4);
 
       context.save();
       context.beginPath();
@@ -602,10 +606,10 @@ export function ReactorSimulation({
       context.fillStyle = '#06151d';
       context.fillRect(lensX - radius, lensY - radius, radius * 2, radius * 2);
       context.translate(lensX, lensY);
-      context.scale(5, 5);
+      context.scale(4, 4);
       context.translate(-lensX, -lensY);
       context.scale(scaleX, scaleY);
-      context.drawImage(ensureBaseLayer(), 0, 0);
+      context.drawImage(ensureBaseLayer(), 0, 0, WIDTH, HEIGHT);
       const visibleNucleusRadiusSquared = (logicalRadius + 8) ** 2;
       NUCLEI.forEach((nucleus, index) => {
         const distanceSquared = (nucleus.x - pointer.x) ** 2 + (nucleus.y - pointer.y) ** 2;
@@ -654,7 +658,7 @@ export function ReactorSimulation({
       context.font = '900 10px monospace';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
-      context.fillText('5×', lensX + radius * 0.61, lensY - radius * 0.61 + 0.5);
+      context.fillText('4×', lensX + radius * 0.61, lensY - radius * 0.61 + 0.5);
       context.restore();
     };
 
@@ -683,7 +687,7 @@ export function ReactorSimulation({
         if (staticContext) {
           staticContext.setTransform(staticCanvas.width / WIDTH, 0, 0, staticCanvas.height / HEIGHT, 0, 0);
           staticContext.clearRect(0, 0, WIDTH, HEIGHT);
-          staticContext.drawImage(ensureBaseLayer(), 0, 0);
+          staticContext.drawImage(ensureBaseLayer(), 0, 0, WIDTH, HEIGHT);
           staticContext.drawImage(ensureNucleiLayer(), 0, 0);
         }
         staticCanvasNeedsRedrawRef.current = false;
@@ -765,7 +769,7 @@ export function ReactorSimulation({
       <canvas
         ref={canvasRef}
         className={`reactor-canvas reactor-canvas-layer ${zoomEnabled ? 'zoom-active' : ''}`}
-        aria-label="Interactive reactor core. Double-click a fuel rod to select it for replacement. Drag any cyan control rod grip vertically to move the whole control-rod bank. Press Z to toggle the five times inspection loupe."
+        aria-label="Interactive reactor core. Double-click a fuel rod to select it for replacement. Drag any cyan control rod grip vertically to move the whole control-rod bank. Press Z to toggle the four times inspection loupe."
         onClick={(event) => {
           const point = pointerPosition(event);
           if (fuelAssemblyAtPoint(point.x, point.y) === -1 && !isNearRodBank(point.x, point.y)) {
@@ -886,15 +890,30 @@ function drawStaticCore(context: CanvasRenderingContext2D) {
     context.stroke();
   }
 
-  context.fillStyle = '#102b35';
-  context.fillRect(CORE.x + 20, CORE.y - 35, CORE.width - 40, 27);
+  const housingMetal = context.createLinearGradient(0, CORE.y - 62, 0, CORE.y - 8);
+  housingMetal.addColorStop(0, '#617681');
+  housingMetal.addColorStop(0.12, '#344a55');
+  housingMetal.addColorStop(0.48, '#263b46');
+  housingMetal.addColorStop(0.8, '#3c535e');
+  housingMetal.addColorStop(1, '#1a2d36');
+  context.fillStyle = housingMetal;
+  context.fillRect(CORE.x + 20, CORE.y - 62, CORE.width - 40, 54);
+  // Fine horizontal brushing distinguishes the housing from the vertical rod finish.
+  context.lineWidth = 0.5;
+  for (let y = CORE.y - 60; y < CORE.y - 9; y += 2) {
+    context.strokeStyle = 'rgba(220, 238, 245, .055)';
+    context.beginPath();
+    context.moveTo(CORE.x + 22, y);
+    context.lineTo(CORE.x + CORE.width - 22, y);
+    context.stroke();
+  }
   context.strokeStyle = '#396675';
   context.lineWidth = 2;
-  context.strokeRect(CORE.x + 20, CORE.y - 35, CORE.width - 40, 27);
-  context.fillStyle = '#72909a';
-  context.font = '600 10px monospace';
+  context.strokeRect(CORE.x + 20, CORE.y - 62, CORE.width - 40, 54);
+  context.fillStyle = '#d4e3e9';
+  context.font = '600 20px monospace';
   context.textAlign = 'center';
-  context.fillText('CONTROL RODS', WIDTH / 2, CORE.y - 18);
+  context.fillText('CONTROL RODS', WIDTH / 2, CORE.y - 28);
   context.fillStyle = 'rgba(130, 184, 196, .44)';
   context.font = '600 9px monospace';
   context.textAlign = 'left';

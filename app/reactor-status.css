@@ -1,10 +1,14 @@
 .safety-status {
   box-sizing: border-box;
-  height: 58px;
-  min-height: 58px;
-  max-height: 58px;
+  height: 84px;
+  min-height: 84px;
+  max-height: 84px;
 }
 
 .safety-status-copy {
   justify-content: center;
+}
+
+.safety-status-copy strong {
+  overflow-wrap: anywhere;
 }
